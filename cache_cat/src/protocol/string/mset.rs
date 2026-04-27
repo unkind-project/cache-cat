@@ -5,7 +5,7 @@ use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::request::Request;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 
 /// Parameters for MSET command
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -47,7 +47,7 @@ impl MsetParams {
     }
 }
 impl Display for MsetParams {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "MSET {{ pairs: {:?} }}", self.pairs)
     }
 }
@@ -59,16 +59,6 @@ pub struct MsetCommand;
 impl Command for MsetCommand {
     async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
         let params = MsetParams::parse(items)?;
-
-        // let mut entries: Vec<UpsertKV> = Vec::with_capacity(params.pairs.len());
-        //
-        // for (key, value) in params.pairs {
-        //     let string_value = StringValue::new(value);
-        //     let serialized = string_value.serialize();
-        //     entries.push(UpsertKV::insert(&key, &serialized));
-        // }
-        //
-        // server.batch_write(entries).await?;
         let res = server
             .app
             .raft

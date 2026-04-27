@@ -21,7 +21,7 @@ use openraft::{OptionalSend, Snapshot, StoredMembership};
 use openraft::{RaftSnapshotBuilder, RaftTypeConfig};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use tokio::sync::Mutex;
 
 pub struct FileStore {
@@ -63,6 +63,7 @@ pub struct StateMachineData {
 
     // 只有俩个任务会获取这个锁，快照和raft主任务。它们都是单线程的。 启动的时候也可能被获取但这不影响性能。
     raft_meta_data: Arc<Mutex<RaftMetaData>>,
+
 }
 
 impl RaftSnapshotBuilder<TypeConfig> for StateMachineStore {
@@ -334,6 +335,7 @@ pub async fn redis_mset_hand(
     params: MsetParams,
     mut update_type: UpdateType<'_>,
 ) -> Value {
+    let _lock = cache.batch_write_lock.write().await;
     for pair in params.pairs {
         let set = SetReq {
             key: Arc::from(pair.0),

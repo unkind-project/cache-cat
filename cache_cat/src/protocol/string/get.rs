@@ -41,6 +41,14 @@ async fn get_value_check_expiry(
         .await
         .map_err(|e| StorageError::ReadFailed(e.to_string()))?;
     linearizer.await_ready(&raft).await.unwrap();
+    let _lock = server
+        .app
+        .state_machine
+        .data
+        .kvs
+        .batch_write_lock
+        .read()
+        .await;
     let value = server.app.state_machine.data.kvs.cache.get(key).await;
     match value {
         None => Ok(None),

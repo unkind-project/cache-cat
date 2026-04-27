@@ -1,19 +1,14 @@
-use crate::raft::types::core::response_value::Value;
 use crate::raft::types::core::value_object::ValueObject;
-use crate::raft::types::entry::bae_operation::{BaseOperation, DelReq, LPushReq, SetReq};
 use crate::raft::types::entry::request::AtomicRequest;
 use crate::utils::{now_ms, parse_i64};
 use moka::Expiry;
 use moka::future::Cache;
-use moka::ops::compute::{CompResult, Op};
 use serde::{Deserialize, Serialize, Serializer};
-use std::collections::{BTreeMap, HashMap, HashSet, LinkedList};
 use std::mem::size_of;
 use std::option::Option;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::io;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::sync::RwLock;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MyValue {
@@ -87,6 +82,7 @@ impl Expiry<Arc<Vec<u8>>, MyValue> for MyExpiry {
 pub struct MyCache {
     // 内部 Cache的Clone成本是低廉的
     pub cache: Cache<Arc<Vec<u8>>, MyValue>,
+    pub batch_write_lock: Arc<RwLock<()>>,
 }
 pub enum UpdateType<'a> {
     None,
@@ -101,9 +97,11 @@ impl MyCache {
             // .max_capacity(max_capacity)
             .expire_after(MyExpiry)
             .build();
-        Self { cache }
+        Self {
+            cache,
+            batch_write_lock: Arc::new(RwLock::new(())),
+        }
     }
-
 
     pub fn invalidate_all(&self) {
         self.cache.invalidate_all();
@@ -114,5 +112,4 @@ impl MyCache {
         self.cache.entry_count()
     }
     //成功就返回链表长度 失败返回错误内容 不存在就创建一个list
-
 }

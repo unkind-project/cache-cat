@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use tracing::warn;
 use crate::protocol::string::incr::IncrCommand;
 use crate::protocol::string::incrby::IncrByCommand;
+use crate::protocol::string::mset::MsetCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -46,6 +47,7 @@ impl CommandFactory {
         factory.register("PING", PingCommand);
         factory.register("INCR", IncrCommand);
         factory.register("INCRBY", IncrByCommand);
+        factory.register("MSET", MsetCommand);
 
 
         factory

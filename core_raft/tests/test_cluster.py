@@ -15,6 +15,7 @@ r = redis.Redis(
 # time.sleep(5)
 # 再获取
 # r.delete('name')
-r.incr('name')
-print(r.get('test1'))
-print(r.get('name'))
+# r.incr('name')
+# r.mset({'test3': '1', 'test2': '2'})
+print(r.get('test3'))
+# print(r.get('name'))
