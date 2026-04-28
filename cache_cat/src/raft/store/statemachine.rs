@@ -20,8 +20,8 @@ use openraft::{EntryPayload, LogId, SnapshotMeta};
 use openraft::{OptionalSend, Snapshot, StoredMembership};
 use openraft::{RaftSnapshotBuilder, RaftTypeConfig};
 use std::io;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
+use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Debug, Clone, Default)]
@@ -166,6 +166,7 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
                                 st.set(set, update_type).await;
                                 Value::ok()
                             }
+                            BaseOperation::Expire(expire) => st.expire(expire, update_type).await,
                             BaseOperation::LPush(l_push) => st.l_push(l_push, update_type).await,
                             BaseOperation::Del(del) => st.del(del, update_type).await,
                             BaseOperation::Incr(incr) => st.incr(incr, update_type).await,
@@ -209,30 +210,22 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
             .await?
             .ok_or(io::Error::new(io::ErrorKind::Other, "meta data is empty"))?;
         for atomic_request in res.1 {
+            let update_type = &mut UpdateType::CAS(atomic_request.version);
             match atomic_request.request {
                 BaseOperation::Set(set_req) => {
-                    self.data
-                        .kvs
-                        .set(set_req, &mut UpdateType::CAS(atomic_request.version))
-                        .await;
+                    self.data.kvs.set(set_req, update_type).await;
+                }
+                BaseOperation::Expire(expire_req) => {
+                    self.data.kvs.expire(expire_req, update_type).await;
                 }
                 BaseOperation::LPush(l_push_req) => {
-                    self.data
-                        .kvs
-                        .l_push(l_push_req, &mut UpdateType::CAS(atomic_request.version))
-                        .await;
+                    self.data.kvs.l_push(l_push_req, update_type).await;
                 }
                 BaseOperation::Del(del_req) => {
-                    self.data
-                        .kvs
-                        .del(del_req, &mut UpdateType::CAS(atomic_request.version))
-                        .await;
+                    self.data.kvs.del(del_req, update_type).await;
                 }
                 BaseOperation::Incr(incr_req) => {
-                    self.data
-                        .kvs
-                        .incr(incr_req, &mut UpdateType::CAS(atomic_request.version))
-                        .await;
+                    self.data.kvs.incr(incr_req, update_type).await;
                 }
             }
         }

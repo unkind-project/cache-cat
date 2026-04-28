@@ -1,3 +1,4 @@
+use crate::protocol::key::expire::ExpireCondition;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::sync::Arc;
@@ -8,7 +9,26 @@ pub enum BaseOperation {
     LPush(LPushReq),
     Del(DelReq),
     Incr(IncrReq),
+    Expire(ExpireReq),
 }
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct ExpireReq {
+    pub key: Arc<Vec<u8>>,
+    pub expires_at: u64,
+    pub condition: Option<ExpireCondition>,
+}
+impl fmt::Display for ExpireReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "ExpireReq {{ key: {}, seconds: {}, condition: {:?} }}",
+            String::from_utf8_lossy(&self.key),
+            self.expires_at,
+            self.condition
+        )
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct IncrReq {
     pub key: Arc<Vec<u8>>,

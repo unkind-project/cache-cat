@@ -32,12 +32,11 @@ impl MyCache {
                     .and_upsert_with(|old_entry| {
                         let set_req = set_req.clone();
                         async move {
-                            let old_version = if let Some(entry) = old_entry {
+                            value.version = if let Some(entry) = old_entry {
                                 entry.into_value().version + 1
                             } else {
                                 0
                             };
-                            value.version = old_version;
                             queue.push(AtomicRequest {
                                 version: value.version,
                                 request: BaseOperation::Set(set_req),
