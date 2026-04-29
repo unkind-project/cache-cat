@@ -67,8 +67,8 @@ impl Command for MgetCommand {
             .await
             .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
         let mut results = Vec::with_capacity(params.keys.len());
-        let _shard_lock = server.app.state_machine.data.kvs.shard_lock.lock();
-        let _exclusive_lock = server.app.state_machine.data.kvs.exclusive_lock.lock();
+        let _shard_lock = server.app.state_machine.data.kvs.write_lock.lock();
+        let _exclusive_lock = server.app.state_machine.data.kvs.read_lock.lock();
         for key in &params.keys {
             let value = get_value(server, key).await;
             match value {

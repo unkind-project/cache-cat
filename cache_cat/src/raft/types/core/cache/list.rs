@@ -30,7 +30,7 @@ impl MyCache {
                                 let value = MyValue {
                                     data: ValueObject::List(VecDeque::from(l_push.elements)),
                                     expires_at: 0,
-                                    version: 0,
+                                    version: 1,
                                 };
                                 Op::Put(value)
                             }
@@ -39,7 +39,6 @@ impl MyCache {
                     .await
             }
             UpdateType::Snapshot(queue) => {
-                //成功就返回链表长度 失败返回错误内容 不存在就创建一个list
                 self.cache
                     .entry(l_push.key.clone())
                     .and_compute_with(|maybe_entry| async move {
@@ -77,7 +76,7 @@ impl MyCache {
                     })
                     .await
             }
-            UpdateType::CAS(version) => {
+            UpdateType::CAS(cas_version) => {
                 self.cache
                     .entry(l_push.key.clone())
                     .and_compute_with(|maybe_entry| async move {
@@ -86,7 +85,7 @@ impl MyCache {
                                 let mut value = entry.into_value();
                                 match &mut value.data {
                                     ValueObject::List(data) => {
-                                        if value.version != *version {
+                                        if value.version != *cas_version - 1 {
                                             return Op::Nop;
                                         }
                                         value.version += 1;
@@ -99,10 +98,6 @@ impl MyCache {
                                 }
                             }
                             None => {
-                                if *version != 0 {
-                                    //理论上不会出现
-                                    tracing::error!("CAS failed: operation not found");
-                                }
                                 let value = MyValue {
                                     data: ValueObject::List(VecDeque::from(l_push.elements)),
                                     expires_at: 0,

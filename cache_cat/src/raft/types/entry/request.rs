@@ -24,6 +24,7 @@ impl fmt::Display for Request {
                 BaseOperation::Del(req) => write!(f, "DEL: {}", req),
                 BaseOperation::Incr(req) => write!(f, "Incr: {}", req),
                 BaseOperation::Expire(req) => write!(f, "Expire: {}", req),
+                BaseOperation::Append( req)=> write!(f, "Append: {}", req),
             },
             Request::RedisSet(req) => write!(f, "RedisSet: {}", req),
             Request::RedisMset(req) => write!(f, "RedisMset: {}", req),

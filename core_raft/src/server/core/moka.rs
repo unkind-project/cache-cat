@@ -29,10 +29,7 @@ const ARC_COUNTER_SIZE: usize = 2 * size_of::<usize>(); // strong + weak
 const VEC_SIZE: usize = size_of::<Vec<u8>>();
 
 impl MyValue {
-    pub fn estimated_memory_usage(&self) -> usize {
-        // MY_VALUE_SIZE + ARC_COUNTER_SIZE + VEC_SIZE + self.data.capacity()
-        0
-    }
+
 }
 
 // =====================

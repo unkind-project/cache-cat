@@ -1,3 +1,4 @@
+pub mod append;
 pub mod get;
 pub mod incr;
 pub mod incrby;

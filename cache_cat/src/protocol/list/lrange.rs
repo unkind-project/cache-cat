@@ -60,7 +60,7 @@ impl Command for LRangeCommand {
             .await_ready(&raft)
             .await
             .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
-        let lock = server.app.state_machine.data.kvs.shard_lock.lock().await;
+        let lock = server.app.state_machine.data.kvs.write_lock.lock().await;
         let my_value = server
             .app
             .state_machine

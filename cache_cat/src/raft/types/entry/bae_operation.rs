@@ -10,6 +10,24 @@ pub enum BaseOperation {
     LPush(LPushReq),
     Incr(IncrReq),
     Expire(ExpireReq),
+    Append(AppendReq),
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct AppendReq {
+    pub key: Arc<Vec<u8>>,
+    pub value: Arc<Vec<u8>>,
+}
+
+impl fmt::Display for AppendReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "AppendReq {{ key: {}, value: {} }}",
+            String::from_utf8_lossy(&self.key),
+            String::from_utf8_lossy(&self.value)
+        )
+    }
 }
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct ExpireReq {
@@ -83,6 +101,10 @@ pub struct DelReq {
 }
 impl fmt::Display for DelReq {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "DelReq {{ key: {} }}", String::from_utf8_lossy(&self.key))
+        write!(
+            f,
+            "DelReq {{ key: {} }}",
+            String::from_utf8_lossy(&self.key)
+        )
     }
 }

@@ -39,8 +39,9 @@ impl MyCache {
 
                 self.cache.insert(key, v).await;
             }
-            UpdateType::CAS(version) => {
-                if *version == v.version {
+            UpdateType::CAS(cas_version) => {
+                if *cas_version - 1 == v.version {
+                    v.version += 1;
                     self.cache.insert(expire_req.key, v).await;
                 }
             }
@@ -61,7 +62,7 @@ impl MyCache {
                 let version = if let Some(entry) = self.cache.get(&del_req.key).await {
                     entry.version + 1
                 } else {
-                    0
+                    1
                 };
                 queue.push(AtomicRequest {
                     version,
@@ -71,9 +72,9 @@ impl MyCache {
                 let existed = self.cache.remove(&del_req.key).await;
                 existed.is_some()
             }
-            UpdateType::CAS(version) => {
+            UpdateType::CAS(cas_version) => {
                 if let Some(entry) = self.cache.get(&del_req.key).await {
-                    if entry.version == *version {
+                    if entry.version == *cas_version - 1 {
                         self.cache.remove(&del_req.key).await;
                         return true;
                     }

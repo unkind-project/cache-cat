@@ -146,7 +146,7 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
         Strm: Stream<Item = Result<EntryResponder<TypeConfig>, io::Error>> + Unpin + OptionalSend,
     {
         let mut raft_meta = self.data.raft_meta_data.lock().await;
-        let _lock = self.data.kvs.shard_lock.lock().await;
+        let _lock = self.data.kvs.write_lock.lock().await;
         let mut guard;
         let update_type = if raft_meta.snapshot_state {
             guard = self.data.incremental_operation_queue.lock().await;
@@ -177,6 +177,7 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
                                 }
                             }
                             BaseOperation::Incr(incr) => st.incr(incr, update_type).await,
+                            BaseOperation::Append(append) => st.append(append, update_type).await,
                         }
                     }
                     Request::RedisDel(del) => redis_del_hand(st, del, update_type).await,
@@ -235,6 +236,9 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
                 BaseOperation::Incr(incr_req) => {
                     self.data.kvs.incr(incr_req, update_type).await;
                 }
+                BaseOperation::Append(append) => {
+                    self.data.kvs.append(append, update_type).await;
+                }
             }
         }
         self.update_meta_data(res.0).await;
@@ -264,7 +268,7 @@ pub async fn redis_del_hand(
     update_type: &mut UpdateType<'_>,
 ) -> Value {
     let mut count = 0;
-    let _exclusive_lock = cache.exclusive_lock.lock().await;
+    let _exclusive_lock = cache.read_lock.lock().await;
     for key in params.keys {
         let del = DelReq {
             key: Arc::from(key),
@@ -281,7 +285,7 @@ pub async fn redis_mset_hand(
     params: MsetParams,
     update_type: &mut UpdateType<'_>,
 ) -> Value {
-    let _exclusive_lock = cache.exclusive_lock.lock().await;
+    let _exclusive_lock = cache.read_lock.lock().await;
     for pair in params.pairs {
         let set = SetReq {
             key: Arc::from(pair.0),
