@@ -10,5 +10,6 @@ r = redis.Redis(
     decode_responses=True
 )
 
+r.lpush('32112', '2')
 # 设置 key，1 秒后过期
-print(r.hset('321', 'zhangsan', '1'))
+print(r.lrange('32112', 0, -1))

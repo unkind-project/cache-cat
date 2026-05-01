@@ -74,7 +74,7 @@ impl Command for LRangeCommand {
             None => Ok(Value::BulkString(None)),
             Some(v) => match v.data {
                 ValueObject::List(list) => {
-                    let vec = lrange(&list, params.start, params.stop);
+                    let vec = lrange(&list.lock(), params.start, params.stop);
                     let mut array = Vec::new();
                     for x in vec {
                         let value = Value::BulkString(Some(x.as_ref().clone()));

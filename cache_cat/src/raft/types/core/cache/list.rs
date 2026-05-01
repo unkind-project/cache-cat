@@ -4,7 +4,9 @@ use crate::raft::types::core::value_object::ValueObject;
 use crate::raft::types::entry::bae_operation::{BaseOperation, LPushReq};
 use crate::raft::types::entry::request::AtomicRequest;
 use moka::ops::compute::{CompResult, Op};
+use parking_lot::lock_api::Mutex;
 use std::collections::VecDeque;
+use std::error::Error;
 use std::sync::Arc;
 
 impl MyCache {
@@ -19,17 +21,20 @@ impl MyCache {
                                 let mut value = entry.into_value();
                                 match &mut value.data {
                                     ValueObject::List(data_arc) => {
-                                        let data = Arc::make_mut(data_arc);
+                                        let mut data = data_arc.lock();
                                         for element in l_push.elements {
-                                            data.push_front(element);
+                                            data.push_front(element)
                                         }
+                                        drop(data);
                                         Op::Put(value)
                                     }
                                     _ => Op::Nop,
                                 }
                             }
                             None => Op::Put(MyValue {
-                                data: ValueObject::List(Arc::from(VecDeque::from(l_push.elements))),
+                                data: ValueObject::List(Arc::from(Mutex::new(VecDeque::from(
+                                    l_push.elements,
+                                )))),
                                 expires_at: 0,
                                 version: 1,
                             }),
@@ -46,7 +51,7 @@ impl MyCache {
                                 let mut value = entry.into_value();
                                 match &mut value.data {
                                     ValueObject::List(data_arc) => {
-                                        let data = Arc::make_mut(data_arc);
+                                        let mut data = data_arc.lock();
                                         queue.push(AtomicRequest {
                                             version: value.version,
                                             request: BaseOperation::LPush(l_push.clone()),
@@ -55,6 +60,7 @@ impl MyCache {
                                         for element in l_push.elements {
                                             data.push_front(element);
                                         }
+                                        drop(data);
                                         Op::Put(value)
                                     }
                                     _ => Op::Nop,
@@ -66,9 +72,9 @@ impl MyCache {
                                     request: BaseOperation::LPush(l_push.clone()),
                                 });
                                 let value = MyValue {
-                                    data: ValueObject::List(Arc::from(VecDeque::from(
+                                    data: ValueObject::List(Arc::from(Mutex::new(VecDeque::from(
                                         l_push.elements,
-                                    ))),
+                                    )))),
                                     expires_at: 0,
                                     version: 1,
                                 };
@@ -87,7 +93,7 @@ impl MyCache {
                                 let mut value = entry.into_value();
                                 match &mut value.data {
                                     ValueObject::List(data_arc) => {
-                                        let data = Arc::make_mut(data_arc);
+                                        let mut data = data_arc.lock();
                                         if value.version != *cas_version - 1 {
                                             return Op::Nop;
                                         }
@@ -95,6 +101,7 @@ impl MyCache {
                                         for element in l_push.elements {
                                             data.push_front(element);
                                         }
+                                        drop(data);
                                         Op::Put(value)
                                     }
                                     _ => Op::Nop,
@@ -102,9 +109,9 @@ impl MyCache {
                             }
                             None => {
                                 let value = MyValue {
-                                    data: ValueObject::List(Arc::from(VecDeque::from(
+                                    data: ValueObject::List(Arc::from(Mutex::new(VecDeque::from(
                                         l_push.elements,
-                                    ))),
+                                    )))),
                                     expires_at: 0,
                                     version: 1,
                                 };
@@ -119,7 +126,7 @@ impl MyCache {
             CompResult::Inserted(entry)
             | CompResult::ReplacedWith(entry)
             | CompResult::Unchanged(entry) => match entry.into_value().data {
-                ValueObject::List(data_arc) => Value::Integer(data_arc.len() as i64),
+                ValueObject::List(data_arc) => Value::Integer(data_arc.lock().len() as i64),
                 _ => Value::Error("Key exists but is not a List".to_string()),
             },
             CompResult::StillNone(_) => {
