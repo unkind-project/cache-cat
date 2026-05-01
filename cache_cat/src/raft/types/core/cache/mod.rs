@@ -4,3 +4,4 @@ mod string;
 mod key;
 mod list;
 mod hash;
+mod zset;

@@ -5,7 +5,6 @@ use openraft::SnapshotMeta;
 use openraft::alias::VoteOf;
 use openraft::raft::{AppendEntriesRequest, VoteRequest};
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use std::hash::Hasher;
 use std::sync::Arc;
 

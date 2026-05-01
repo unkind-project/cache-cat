@@ -160,27 +160,25 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
             let response = match entry.payload {
                 EntryPayload::Blank => Value::ok(),
                 EntryPayload::Normal(req) => match req {
-                    Request::Base(base) => {
-                        match base {
-                            BaseOperation::Set(set) => {
-                                // 使用结构体的字段名来访问成员
-                                st.set(set, update_type).await;
-                                Value::ok()
-                            }
-                            BaseOperation::Expire(expire) => st.expire(expire, update_type).await,
-                            BaseOperation::LPush(l_push) => st.l_push(l_push, update_type).await,
-                            BaseOperation::Del(del) => {
-                                if st.del(del, update_type).await {
-                                    Value::Integer(1)
-                                } else {
-                                    Value::Integer(0)
-                                }
-                            }
-                            BaseOperation::Incr(incr) => st.incr(incr, update_type).await,
-                            BaseOperation::Append(append) => st.append(append, update_type).await,
-                            BaseOperation::HSet(h_set) => st.h_set(h_set, update_type).await,
+                    Request::Base(base) => match base {
+                        BaseOperation::Set(set) => {
+                            st.set(set, update_type).await;
+                            Value::ok()
                         }
-                    }
+                        BaseOperation::Expire(expire) => st.expire(expire, update_type).await,
+                        BaseOperation::LPush(l_push) => st.l_push(l_push, update_type).await,
+                        BaseOperation::Del(del) => {
+                            if st.del(del, update_type).await {
+                                Value::Integer(1)
+                            } else {
+                                Value::Integer(0)
+                            }
+                        }
+                        BaseOperation::Incr(incr) => st.incr(incr, update_type).await,
+                        BaseOperation::Append(append) => st.append(append, update_type).await,
+                        BaseOperation::HSet(h_set) => st.h_set(h_set, update_type).await,
+                        BaseOperation::ZAdd(z_add) => st.z_add(z_add, update_type).await,
+                    },
                     Request::RedisDel(del) => redis_del_hand(st, del, update_type).await,
                     Request::RedisSet(set) => redis_set_hand(st, set, update_type).await,
                     Request::RedisMset(mset) => redis_mset_hand(st, mset, update_type).await,
@@ -222,26 +220,29 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
         for atomic_request in res.1 {
             let update_type = &mut UpdateType::CAS(atomic_request.version);
             match atomic_request.request {
-                BaseOperation::Set(set_req) => {
-                    self.data.kvs.set(set_req, update_type).await;
+                BaseOperation::Set(set) => {
+                    self.data.kvs.set(set, update_type).await;
                 }
                 BaseOperation::Expire(expire_req) => {
                     self.data.kvs.expire(expire_req, update_type).await;
                 }
-                BaseOperation::LPush(l_push_req) => {
-                    self.data.kvs.l_push(l_push_req, update_type).await;
+                BaseOperation::LPush(l_push) => {
+                    self.data.kvs.l_push(l_push, update_type).await;
                 }
-                BaseOperation::Del(del_req) => {
-                    self.data.kvs.del(del_req, update_type).await;
+                BaseOperation::Del(del) => {
+                    self.data.kvs.del(del, update_type).await;
                 }
-                BaseOperation::Incr(incr_req) => {
-                    self.data.kvs.incr(incr_req, update_type).await;
+                BaseOperation::Incr(incr) => {
+                    self.data.kvs.incr(incr, update_type).await;
                 }
                 BaseOperation::Append(append) => {
                     self.data.kvs.append(append, update_type).await;
                 }
-                BaseOperation::HSet(h_set_req) => {
-                    self.data.kvs.h_set(h_set_req, update_type).await;
+                BaseOperation::HSet(hset) => {
+                    self.data.kvs.h_set(hset, update_type).await;
+                }
+                BaseOperation::ZAdd(zadd) => {
+                    self.data.kvs.z_add(zadd, update_type).await;
                 }
             }
         }

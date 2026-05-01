@@ -12,7 +12,34 @@ pub enum BaseOperation {
     Expire(ExpireReq),
     Append(AppendReq),
     HSet(HSetReq),
+    ZAdd(ZAddReq),
 }
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct ZAddReq {
+    pub key: Arc<Vec<u8>>,
+    nx: bool,
+    xx: bool,
+    gt: bool,
+    lt: bool,
+    ch: bool,
+    pub members: Vec<(Arc<Vec<u8>>, f64)>,
+}
+impl fmt::Display for ZAddReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "ZAddReq {{ key: {}, nx: {}, xx: {}, gt: {}, lt: {}, ch: {}, members: {:?} }}",
+            String::from_utf8_lossy(&self.key),
+            self.nx,
+            self.xx,
+            self.gt,
+            self.lt,
+            self.ch,
+            self.members
+        )
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct HSetReq {
     pub key: Arc<Vec<u8>>,
