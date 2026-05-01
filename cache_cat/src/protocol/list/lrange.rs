@@ -60,7 +60,7 @@ impl Command for LRangeCommand {
             .await_ready(&raft)
             .await
             .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
-        let lock = server.app.state_machine.data.kvs.write_lock.lock().await;
+        let read_lock = server.app.state_machine.data.kvs.read_lock.lock().await;
         let my_value = server
             .app
             .state_machine
@@ -69,7 +69,7 @@ impl Command for LRangeCommand {
             .cache
             .get(&params.key)
             .await;
-        drop(lock);
+        drop(read_lock);
         match my_value {
             None => Ok(Value::BulkString(None)),
             Some(v) => match v.data {

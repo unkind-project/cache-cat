@@ -52,11 +52,11 @@ impl MyCache {
                                 match &mut value.data {
                                     ValueObject::List(data_arc) => {
                                         let mut data = data_arc.lock();
+                                        value.version += 1;
                                         queue.push(AtomicRequest {
                                             version: value.version,
                                             request: BaseOperation::LPush(l_push.clone()),
                                         });
-                                        value.version += 1;
                                         for element in l_push.elements {
                                             data.push_front(element);
                                         }

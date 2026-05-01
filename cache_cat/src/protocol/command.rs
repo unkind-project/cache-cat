@@ -18,6 +18,7 @@ use crate::raft::types::entry::bae_operation::ExpireReq;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use tracing::warn;
+use crate::protocol::hash::hget::HGetCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -61,6 +62,8 @@ impl CommandFactory {
         factory.register("EXPIRE", ExpireCommand);
         factory.register("APPEND", AppendCommand);
         factory.register("HSET", HSetCommand);
+        factory.register("HGET", HGetCommand);
+
 
         factory
     }
