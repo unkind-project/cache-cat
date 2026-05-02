@@ -13,7 +13,24 @@ pub enum BaseOperation {
     Append(AppendReq),
     HSet(HSetReq),
     ZAdd(ZAddReq),
+    SAdd(SAddReq),
 }
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct SAddReq {
+    pub key: Arc<Vec<u8>>,
+    pub members: Vec<Arc<Vec<u8>>>,
+}
+impl fmt::Display for SAddReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "SAddReq {{ key: {}, members: {:?} }}",
+            String::from_utf8_lossy(&self.key),
+            self.members
+        )
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct ZAddReq {
     pub key: Arc<Vec<u8>>,

@@ -4,7 +4,7 @@ use crate::raft::types::core::value_object::ValueObject;
 use crate::raft::types::entry::bae_operation::{BaseOperation, HSetReq};
 use crate::raft::types::entry::request::AtomicRequest;
 use parking_lot::Mutex;
-use std::collections::{HashMap};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 impl MyCache {
@@ -55,7 +55,6 @@ impl MyCache {
                         expires_at: 0,
                         data: ValueObject::Hash(Arc::new(Mutex::new(map))),
                     };
-                    value.version += 1;
                     queue.push(AtomicRequest {
                         version: value.version,
                         request: BaseOperation::HSet(hset_copy),
@@ -63,8 +62,16 @@ impl MyCache {
                     self.cache.insert(hset.key, value).await;
                     Value::Integer(element_len as i64)
                 }
-                Some(entry) => match entry.data {
+                Some(mut entry) => match entry.data {
                     ValueObject::Hash(mut value) => {
+                        entry.version += 1;
+                        queue.push(AtomicRequest {
+                            version: entry.version,
+                            request: BaseOperation::HSet(HSetReq {
+                                key: hset.key,
+                                elements: hset.elements.clone(),
+                            }),
+                        });
                         let mut counter = 0;
                         let mut map = value.lock();
                         for element in hset.elements {
@@ -73,6 +80,7 @@ impl MyCache {
                                 _ => {}
                             }
                         }
+
                         Value::Integer(counter)
                     }
                     _ => Value::Error("Key exists but is not a hash".to_string()),

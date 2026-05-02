@@ -5,3 +5,4 @@ mod key;
 mod list;
 mod hash;
 mod zset;
+mod sadd;

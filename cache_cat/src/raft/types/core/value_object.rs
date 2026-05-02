@@ -76,8 +76,12 @@ impl SortedSet {
         let mut stop_idx = if stop < 0 { len + stop } else { stop };
 
         // 边界修正
-        if start_idx < 0 { start_idx = 0; }
-        if stop_idx >= len { stop_idx = len - 1; }
+        if start_idx < 0 {
+            start_idx = 0;
+        }
+        if stop_idx >= len {
+            stop_idx = len - 1;
+        }
         if start_idx > stop_idx || start_idx >= len {
             return vec![];
         }
@@ -91,9 +95,7 @@ impl SortedSet {
 
         // 3. 迭代 BTreeMap 提取数据
         // tree 的顺序已经是 (Score, Member) 排序好的
-        let range_iter = self.tree.keys()
-            .skip(start_idx as usize)
-            .take(count);
+        let range_iter = self.tree.keys().skip(start_idx as usize).take(count);
 
         for (score, member) in range_iter {
             // 插入成员
@@ -120,7 +122,8 @@ pub enum ValueObject {
     Hash(Arc<Mutex<HashMap<Arc<Vec<u8>>, Arc<Vec<u8>>>>>),
     #[serde(with = "mutex_zset_serde")]
     ZSet(Arc<Mutex<SortedSet>>),
-    Set(Arc<HashSet<Arc<Vec<u8>>>>),
+    #[serde(with = "mutex_hashset_serde")]
+    Set(Arc<Mutex<HashSet<Arc<Vec<u8>>>>>),
 }
 
 // 通用序列化宏
@@ -156,3 +159,4 @@ macro_rules! impl_mutex_serde {
 impl_mutex_serde!(mutex_vecdeque_serde, VecDeque<Arc<Vec<u8>>>);
 impl_mutex_serde!(mutex_hashmap_serde, HashMap<Arc<Vec<u8>>, Arc<Vec<u8>>>);
 impl_mutex_serde!(mutex_zset_serde, SortedSet);
+impl_mutex_serde!(mutex_hashset_serde, HashSet<Arc<Vec<u8>>>);
