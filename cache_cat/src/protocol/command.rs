@@ -17,7 +17,7 @@ use crate::protocol::string::mset::MsetCommand;
 use crate::protocol::string::set::SetCommand;
 use crate::protocol::zset::zadd::ZAddCommand;
 use crate::protocol::zset::zrange::ZRangeCommand;
-use crate::raft::network::rpc::RedisServer;
+use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::bae_operation::BaseOperation::HIncr;
 use async_trait::async_trait;
