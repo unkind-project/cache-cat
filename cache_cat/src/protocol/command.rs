@@ -5,6 +5,7 @@ use crate::protocol::hash::hincrby::HIncrByCommand;
 use crate::protocol::hash::hset::HSetCommand;
 use crate::protocol::key::del::DelCommand;
 use crate::protocol::key::expire::ExpireCommand;
+use crate::protocol::key::persist::PersistCommand;
 use crate::protocol::list::lpush::LPushCommand;
 use crate::protocol::list::lrange::LRangeCommand;
 use crate::protocol::set::sadd::SAddCommand;
@@ -23,6 +24,7 @@ use crate::raft::types::entry::bae_operation::BaseOperation::HIncr;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use tracing::warn;
+use crate::protocol::key::exists::ExistsCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -71,6 +73,7 @@ impl CommandFactory {
         factory.register("ZRANGE", ZRangeCommand);
         factory.register("SADD", SAddCommand);
         factory.register("HINCRBY", HIncrByCommand);
+        factory.register("EXISTS", ExistsCommand);
 
         factory
     }

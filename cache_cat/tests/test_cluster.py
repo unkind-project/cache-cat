@@ -18,3 +18,4 @@ print(r.zadd("my_zset", {"a": 1, "b": 2, "c": 3}))
 
 print(r.hincrby("test5", "test", 1))
 print(r.hget("test5", "test"))
+print(r.exists("test5"))
