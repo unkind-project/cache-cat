@@ -174,9 +174,10 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
                                 Value::Integer(0)
                             }
                         }
-                        BaseOperation::Incr(incr) => st.incr(incr, update_type).await,
-                        BaseOperation::Append(append) => st.append(append, update_type).await,
+                        BaseOperation::Incr(incr) => st.incr(incr, update_type),
+                        BaseOperation::Append(append) => st.append(append, update_type),
                         BaseOperation::HSet(h_set) => st.h_set(h_set, update_type),
+                        BaseOperation::HIncr(h_get) => st.h_incr(h_get, update_type),
                         BaseOperation::ZAdd(z_add) => st.z_add(z_add, update_type),
                         BaseOperation::SAdd(s_add) => st.s_add(s_add, update_type),
                     },
@@ -241,6 +242,9 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
                 }
                 BaseOperation::HSet(hset) => {
                     self.data.kvs.h_set(hset, update_type);
+                }
+                BaseOperation::HIncr(h_incr) => {
+                    self.data.kvs.h_incr(h_incr, update_type);
                 }
                 BaseOperation::ZAdd(zadd) => {
                     self.data.kvs.z_add(zadd, update_type);

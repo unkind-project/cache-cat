@@ -12,9 +12,28 @@ pub enum BaseOperation {
     Expire(ExpireReq),
     Append(AppendReq),
     HSet(HSetReq),
+    HIncr(HIncrReq),
     ZAdd(ZAddReq),
     SAdd(SAddReq),
 }
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct HIncrReq {
+    pub key: Arc<Vec<u8>>,
+    pub field: Arc<Vec<u8>>,
+    pub value: i64,
+}
+impl fmt::Display for HIncrReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "HIncrReq {{ key: {}, field: {}, value: {} }}",
+            String::from_utf8_lossy(&self.key),
+            String::from_utf8_lossy(&self.field),
+            self.value
+        )
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SAddReq {
     pub key: Arc<Vec<u8>>,

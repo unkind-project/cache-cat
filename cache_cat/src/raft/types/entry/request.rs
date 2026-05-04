@@ -28,6 +28,7 @@ impl fmt::Display for Request {
                 BaseOperation::HSet(req) => write!(f, "HSet: {}", req),
                 BaseOperation::ZAdd(req) => write!(f, "ZAdd: {}", req),
                 BaseOperation::SAdd(req) => write!(f, "SAdd: {}", req),
+                BaseOperation::HIncr(req) => write!(f, "HIncr: {}", req),
             },
             Request::RedisSet(req) => write!(f, "RedisSet: {}", req),
             Request::RedisMset(req) => write!(f, "RedisMset: {}", req),

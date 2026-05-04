@@ -1,6 +1,7 @@
 use crate::error::CacheCatError;
 use crate::protocol::connection::ping::PingCommand;
 use crate::protocol::hash::hget::HGetCommand;
+use crate::protocol::hash::hincrby::HIncrByCommand;
 use crate::protocol::hash::hset::HSetCommand;
 use crate::protocol::key::del::DelCommand;
 use crate::protocol::key::expire::ExpireCommand;
@@ -18,6 +19,7 @@ use crate::protocol::zset::zadd::ZAddCommand;
 use crate::protocol::zset::zrange::ZRangeCommand;
 use crate::raft::network::rpc::RedisServer;
 use crate::raft::types::core::response_value::Value;
+use crate::raft::types::entry::bae_operation::BaseOperation::HIncr;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use tracing::warn;
@@ -68,6 +70,7 @@ impl CommandFactory {
         factory.register("ZADD", ZAddCommand);
         factory.register("ZRANGE", ZRangeCommand);
         factory.register("SADD", SAddCommand);
+        factory.register("HINCRBY", HIncrByCommand);
 
         factory
     }

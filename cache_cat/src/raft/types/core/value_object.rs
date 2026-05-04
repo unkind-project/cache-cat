@@ -106,6 +106,11 @@ impl SortedSet {
         result
     }
 }
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum HashValue {
+    Str(Arc<Vec<u8>>),
+    Int(i64),
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ValueObject {
@@ -114,7 +119,7 @@ pub enum ValueObject {
     #[serde(with = "mutex_vecdeque_serde")]
     List(Arc<Mutex<VecDeque<Arc<Vec<u8>>>>>),
     #[serde(with = "mutex_hashmap_serde")]
-    Hash(Arc<Mutex<HashMap<Arc<Vec<u8>>, Arc<Vec<u8>>>>>),
+    Hash(Arc<Mutex<HashMap<Arc<Vec<u8>>, HashValue>>>),
     #[serde(with = "mutex_zset_serde")]
     ZSet(Arc<Mutex<SortedSet>>),
     #[serde(with = "mutex_hashset_serde")]
@@ -152,6 +157,6 @@ macro_rules! impl_mutex_serde {
 }
 
 impl_mutex_serde!(mutex_vecdeque_serde, VecDeque<Arc<Vec<u8>>>);
-impl_mutex_serde!(mutex_hashmap_serde, HashMap<Arc<Vec<u8>>, Arc<Vec<u8>>>);
+impl_mutex_serde!(mutex_hashmap_serde, HashMap<Arc<Vec<u8>>, HashValue>);
 impl_mutex_serde!(mutex_zset_serde, SortedSet);
 impl_mutex_serde!(mutex_hashset_serde, HashSet<Arc<Vec<u8>>>);

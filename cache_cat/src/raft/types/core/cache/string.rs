@@ -138,11 +138,11 @@ impl MyCache {
         }
     }
 
-    pub async fn incr(&self, incr_req: IncrReq, update: &mut UpdateType<'_>) -> Value {
+    pub fn incr(&self, incr_req: IncrReq, update: &mut UpdateType<'_>) -> Value {
         self.execute_compute(incr_req, update)
     }
     //如果不是string就报错，如果是string就append，如果没有值就创建一个
-    pub async fn append(&self, incr_req: AppendReq, update: &mut UpdateType<'_>) -> Value {
+    pub fn append(&self, incr_req: AppendReq, update: &mut UpdateType<'_>) -> Value {
         self.execute_compute(incr_req, update)
     }
 }

@@ -2,7 +2,7 @@ use crate::error::{CacheCatError, ProtocolError, StorageError};
 use crate::protocol::command::Command;
 use crate::raft::network::rpc::RedisServer;
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::core::value_object::ValueObject;
+use crate::raft::types::core::value_object::{HashValue, ValueObject};
 use async_trait::async_trait;
 use openraft::ReadPolicy::LeaseRead;
 
@@ -49,7 +49,14 @@ impl Command for HGetCommand {
                     let option = guard.get(&field);
                     match option {
                         None => Ok(Value::BulkString(None)),
-                        Some(value) => Ok(Value::BulkString(Some(value.as_ref().clone()))),
+                        Some(value) => match value {
+                            HashValue::Str(str) => {
+                                Ok(Value::BulkString(Some(str.as_ref().clone())))
+                            }
+                            HashValue::Int(int) => {
+                                Ok(Value::BulkString(Some(int.to_string().as_bytes().to_vec())))
+                            }
+                        },
                     }
                 }
                 _ => Err(CacheCatError::from(ProtocolError::WrongType)),
