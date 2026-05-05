@@ -1,3 +1,4 @@
+use crate::error::{CacheCatError, Error, ErrorKind};
 use crate::protocol::command::CommandFactory;
 use crate::raft::network::external_handler::{HANDLER_TABLE, batch_write, write};
 use crate::raft::network::redis_server::RedisServer;
@@ -216,11 +217,11 @@ pub async fn hand(
     app: Arc<CacheCatApp>,
     tx: UnboundedSender<Bytes>,
     mut package: Bytes,
-) -> Result<(), ()> {
+) -> Result<(), CacheCatError> {
     // 安全解析：至少需要 8 bytes (request_id + func_id)
     if package.len() < 8 {
-        error!("包长度不足：{}", package.len());
-        return Err(());
+        error!("Package length insufficient：{}", package.len());
+        return Err(Error::internal("Insufficient package length".to_string()));
     }
 
     // 使用 bytes 库的内置方法，减少手动切片和拷贝
@@ -232,9 +233,10 @@ pub async fn hand(
         .iter()
         .find(|(id, _)| *id == func_id)
         .map(|(_, ctor)| ctor())
-        .ok_or(())?;
+        .ok_or(())
+        .map_err(|_| Error::internal("Handler not found".to_string()))?;
 
-    let response_data = handler.internal_call(app, package).await;
+    let response_data = handler.internal_call(app, package).await?;
 
     // 构造要发送给客户端的 payload：request_id(4) + response_data
     let mut payload = BytesMut::with_capacity(4 + response_data.len());
@@ -244,7 +246,7 @@ pub async fn hand(
     // 发给写任务（注意：这里发送的是不含长度头的 payload，LengthDelimitedCodec 会自动在实际 socket 上写入长度头）
     if tx.send(payload.freeze()).is_err() {
         // 写任务可能已结束或连接已关闭
-        return Err(());
+        return Err(Error::internal("Write task has ended".to_string()));
     }
     Ok(())
 }

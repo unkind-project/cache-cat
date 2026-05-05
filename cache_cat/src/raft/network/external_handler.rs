@@ -1,3 +1,4 @@
+use crate::error::{CacheCatError, Error};
 use crate::raft::network::model::{
     AppendEntriesReq, GetReq, GetRes, InstallFullSnapshotReq, PrintTestReq, PrintTestRes, VoteReq,
 };
@@ -49,7 +50,11 @@ fn hash_string(s: &str) -> u64 {
 #[async_trait]
 pub trait RpcHandler: Send + Sync {
     // 将 app 改为 Arc 传递，更符合异步环境下的生命周期要求
-    async fn internal_call(&self, app: Arc<CacheCatApp>, data: Bytes) -> Bytes;
+    async fn internal_call(
+        &self,
+        app: Arc<CacheCatApp>,
+        data: Bytes,
+    ) -> Result<Bytes, CacheCatError>;
 }
 
 // 修改函数指针定义，使其支持异步返回 Future
@@ -70,14 +75,20 @@ where
     Res: Send + 'static + Serialize,
     Fut: Future<Output = Res> + Send + 'static,
 {
-    async fn internal_call(&self, app: Arc<CacheCatApp>, data: Bytes) -> Bytes {
+    async fn internal_call(
+        &self,
+        app: Arc<CacheCatApp>,
+        data: Bytes,
+    ) -> Result<Bytes, CacheCatError> {
         // 反序列化
-        let req: Req = bincode2::deserialize(data.as_ref()).expect("Failed to deserialize");
+        let req: Req =
+            bincode2::deserialize(data.as_ref()).map_err(|e| Error::internal(e.to_string()))?;
         // 执行异步业务函数
         let res = (self.func)(app, req).await;
         // 序列化
-        let encoded: Vec<u8> = bincode2::serialize(&res).expect("Failed to serialize");
-        encoded.into()
+        let encoded: Vec<u8> =
+            bincode2::serialize(&res).map_err(|e| Error::internal(e.to_string()))?;
+        Ok(encoded.into())
     }
 }
 
