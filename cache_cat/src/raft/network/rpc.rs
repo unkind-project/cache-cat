@@ -1,3 +1,4 @@
+use futures::FutureExt;
 use crate::error::{CacheCatError, Error};
 use crate::protocol::command::CommandFactory;
 use crate::raft::network::external_handler::{HANDLER_TABLE, write};
@@ -8,7 +9,6 @@ use crate::raft::types::raft_types::CacheCatApp;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use futures::stream::FuturesOrdered;
 use futures::{SinkExt, StreamExt};
-use moka::future::FutureExt;
 use std::net::SocketAddr;
 use std::result::Result as StdResult;
 use std::sync::Arc;
@@ -288,7 +288,7 @@ async fn stream_mode(
 
     // 关键：通过rename原子替换目标文件
     // fs::rename(&temp_path, &final_path).await?;
-    tracing::info!(
+    info!(
         "接收到来自{}的文件 文件接收完成: {}",
         peer_addr,
         final_path.to_string_lossy()

@@ -102,7 +102,7 @@ async fn run_cachecat_benchmark(args: Args) -> Result<(), Box<dyn std::error::Er
             args.op.clone(),
             true,
         )
-            .await;
+        .await;
 
         println!(">>> 预热完成，正式测试即将开始 <<<");
     }
@@ -120,7 +120,7 @@ async fn run_cachecat_benchmark(args: Args) -> Result<(), Box<dyn std::error::Er
             args.op,
             false,
         )
-            .await;
+        .await;
     } else {
         run_engine(
             Arc::clone(&client),
@@ -130,7 +130,7 @@ async fn run_cachecat_benchmark(args: Args) -> Result<(), Box<dyn std::error::Er
             args.op,
             false,
         )
-            .await;
+        .await;
     }
 
     Ok(())
@@ -167,7 +167,7 @@ async fn run_redis_benchmark(args: Args) -> Result<(), Box<dyn std::error::Error
             args.op.clone(),
             true,
         )
-            .await;
+        .await;
 
         println!(">>> 预热完成，正式测试即将开始 <<<");
     }
@@ -186,7 +186,7 @@ async fn run_redis_benchmark(args: Args) -> Result<(), Box<dyn std::error::Error
             args.op,
             false,
         )
-            .await;
+        .await;
     }
 
     Ok(())

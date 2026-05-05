@@ -1,5 +1,5 @@
 use crate::raft::store::statemachine::RaftMetaData;
-use crate::raft::types::core::moka::moka::MyCache;
+use crate::raft::types::core::moka::moka::{MyCache};
 use crate::raft::types::entry::request::AtomicRequest;
 use crate::raft::types::raft_types::TypeConfig;
 use openraft::SnapshotMeta;
@@ -209,6 +209,8 @@ where
 
 #[tokio::test]
 async fn test_dump_and_load_with_data() {
+    use crate::raft::types::core::value_object::ValueObject;
+    use crate::raft::types::core::moka::moka::MyValue;
     let cache = MyCache::new();
 
     // 插入测试数据
@@ -248,8 +250,8 @@ async fn test_dump_and_load_with_data() {
         Default::default(),
         Default::default(),
     )
-    .await
-    .expect("dump cache should succeed");
+        .await
+        .expect("dump cache should succeed");
 
     // 创建新缓存并加载数据
     let new_cache = MyCache::new();
@@ -257,7 +259,7 @@ async fn test_dump_and_load_with_data() {
         new_cache.clone(),
         path.join("snapshot").join(get_snapshot_file_name()),
     )
-    .await
+        .await
     {
         Ok(v) => println!("load ok: {:?}", v.unwrap().1),
         Err(e) => {
