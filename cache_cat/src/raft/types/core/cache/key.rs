@@ -1,13 +1,10 @@
 use crate::protocol::key::expire::ExpireCondition;
 use crate::raft::types::core::moka::moka::{MyCache, MyValue, UpdateType};
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::core::value_object::ValueObject;
 use crate::raft::types::entry::bae_operation::{
-    BaseOperation, DelReq, ExpireReq, InsertReq, PersistReq, SetReq,
+    BaseOperation, DelReq, ExpireReq, InsertReq, PersistReq,
 };
 use crate::raft::types::entry::request::AtomicRequest;
-use crate::utils::parse_i64;
-use std::sync::Arc;
 
 impl MyCache {
     pub fn persist(&self, persist: PersistReq, update: &mut UpdateType<'_>) -> Value {

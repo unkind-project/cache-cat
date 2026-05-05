@@ -1,6 +1,5 @@
 use crate::raft::store::statemachine::RaftMetaData;
-use crate::raft::types::core::moka::moka::{MyCache, MyValue};
-use crate::raft::types::core::value_object::ValueObject;
+use crate::raft::types::core::moka::moka::MyCache;
 use crate::raft::types::entry::request::AtomicRequest;
 use crate::raft::types::raft_types::TypeConfig;
 use openraft::SnapshotMeta;

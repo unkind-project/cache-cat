@@ -2,7 +2,7 @@ use crate::error::{CacheCatError, ProtocolError, StorageError};
 use crate::protocol::command::Command;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::entry::bae_operation::BaseOperation::{SAdd, ZAdd};
+use crate::raft::types::entry::bae_operation::BaseOperation::SAdd;
 use crate::raft::types::entry::bae_operation::SAddReq;
 use crate::raft::types::entry::request::Request;
 use async_trait::async_trait;

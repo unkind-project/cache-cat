@@ -1,4 +1,4 @@
-use crate::raft::types::core::moka::moka::{MyCache, MyValue, UpdateType};
+use crate::raft::types::core::moka::moka::{MyCache, MyValue};
 
 use std::sync::Arc;
 use tokio::io;

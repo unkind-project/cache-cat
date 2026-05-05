@@ -3,7 +3,7 @@ use crate::raft::types::core::moka::moka::{MyCache, MyValue, UpdateType};
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::core::value_object::ValueObject::ZSet;
 use crate::raft::types::core::value_object::{SortedSet, ValueObject};
-use crate::raft::types::entry::bae_operation::{BaseOperation, LPushReq, ZAddReq};
+use crate::raft::types::entry::bae_operation::{BaseOperation, ZAddReq};
 use parking_lot::Mutex;
 use std::sync::Arc;
 

@@ -2,7 +2,7 @@ use crate::error::{CacheCatError, ProtocolError, StorageError};
 use crate::protocol::command::Command;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::entry::bae_operation::BaseOperation::{Expire, Incr};
+use crate::raft::types::entry::bae_operation::BaseOperation::Expire;
 use crate::raft::types::entry::bae_operation::ExpireReq;
 use crate::raft::types::entry::request::Request;
 use crate::utils::now_ms;

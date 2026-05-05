@@ -1,6 +1,6 @@
-use crate::error::{CacheCatError, Error, ErrorKind};
+use crate::error::{CacheCatError, Error};
 use crate::protocol::command::CommandFactory;
-use crate::raft::network::external_handler::{HANDLER_TABLE, batch_write, write};
+use crate::raft::network::external_handler::{HANDLER_TABLE, write};
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::store::snapshot::snapshot_handler::get_snapshot_file_name;
 use crate::raft::types::entry::request::Request;

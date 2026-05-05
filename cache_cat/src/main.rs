@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Load configuration first (without logging)
     let config = load_config(&config_path)?;
 
-    let raft_node = RaftNodeBuilder::build(&config).await?;
+    let _raft_node = RaftNodeBuilder::build(&config).await?;
     // if config.node_id == 1 {
     //     let app_clone = raft_node.app.clone();
     //     tokio::spawn(async move {

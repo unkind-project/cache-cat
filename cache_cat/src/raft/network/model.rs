@@ -1,6 +1,5 @@
-use crate::raft::types::endpoint::Endpoint;
 use crate::raft::types::file_operator::FileOperator;
-use crate::raft::types::raft_types::{Node, NodeId, TypeConfig};
+use crate::raft::types::raft_types::{Node, TypeConfig};
 use openraft::SnapshotMeta;
 use openraft::alias::VoteOf;
 use openraft::raft::{AppendEntriesRequest, VoteRequest};

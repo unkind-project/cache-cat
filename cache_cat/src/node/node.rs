@@ -1,21 +1,19 @@
 use crate::config::config::Config;
 use crate::error::{Error, Result};
 use crate::node::parsed_config::ParsedConfig;
-use crate::protocol::command::CommandFactory;
 use crate::raft::network::client::RpcClient;
 use crate::raft::network::network::NetworkFactory;
 use crate::raft::network::rpc::Server;
 use crate::raft::store::log_store::LogStore;
 use crate::raft::store::raft_engine::create_raft_engine;
-use crate::raft::store::statemachine::{StateMachineData, StateMachineStore};
-use crate::raft::types::entry::forward::{ForwardRequest, ForwardRequestBody};
+use crate::raft::store::statemachine::StateMachineStore;
 use crate::raft::types::entry::membership::JoinRequest;
-use crate::raft::types::raft_types::{CacheCatApp, Node, NodeId, Raft, TypeConfig};
-use openraft::SnapshotPolicy::{LogsSinceLast, Never};
+use crate::raft::types::raft_types::{CacheCatApp, Node, NodeId};
+use openraft::SnapshotPolicy::LogsSinceLast;
 use openraft::error::{InitializeError, RaftError};
 use parking_lot::Mutex;
-use std::collections::{BTreeMap, HashMap};
-use std::path::{Path, PathBuf};
+use std::collections::BTreeMap;
+use std::path::Path;
 use std::result::Result as StdResult;
 use std::sync::Arc;
 use std::time::Duration;
@@ -77,7 +75,7 @@ impl RaftNode {
             path: dir.join(""),
         };
 
-        let mut node = Self {
+        let node = Self {
             config: ParsedConfig::from(app_config)?,
             app: Arc::new(app),
             shutdown_tx,
@@ -175,7 +173,7 @@ impl RaftNode {
         let client = RpcClient::connect(addr)
             .await
             .map_err(|e| Error::internal(e.to_string()))?;
-        let res: () = client
+        let _res: () = client
             .call(9, join_req)
             .await
             .map_err(|e| Error::internal(e.to_string()))?;
@@ -229,7 +227,7 @@ impl RaftNode {
     }
 
     async fn start_raft_service(raft_node: Arc<Self>) -> Result<()> {
-        let raft_endpoint = raft_node.config.raft_endpoint.clone();
+        let _raft_endpoint = raft_node.config.raft_endpoint.clone();
         let app = raft_node.app.clone();
         // Subscribe to shutdown signal
         let shutdown_rx = raft_node.shutdown_tx.subscribe();

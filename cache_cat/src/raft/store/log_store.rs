@@ -18,7 +18,6 @@ use std::io;
 use std::marker::PhantomData;
 use std::ops::{Bound, RangeBounds};
 use std::sync::Arc;
-use std::time::Instant;
 use tracing::Instrument;
 
 #[derive(Clone)]
