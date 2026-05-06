@@ -9,7 +9,11 @@ use std::fmt;
 /// A request to the KV store.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Request {
-    Base(BaseOperation),
+    Base(u64, BaseOperation),
+    Redis(u64, RedisOperation),
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum RedisOperation {
     RedisSet(SetParams),
     RedisMset(MsetParams),
     RedisDel(DelParams),
@@ -19,7 +23,7 @@ pub enum Request {
 impl fmt::Display for Request {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Request::Base(op) => match op {
+            Request::Base(.., op) => match op {
                 BaseOperation::Set(req) => write!(f, "Set: {}", req),
                 BaseOperation::LPush(req) => write!(f, "LPush: {}", req),
                 BaseOperation::Del(req) => write!(f, "DEL: {}", req),
@@ -33,10 +37,12 @@ impl fmt::Display for Request {
                 BaseOperation::Persist(req) => write!(f, "Persist: {}", req),
                 BaseOperation::Insert(insert) => write!(f, "Insert: {}", insert),
             },
-            Request::RedisSet(req) => write!(f, "RedisSet: {}", req),
-            Request::RedisMset(req) => write!(f, "RedisMset: {}", req),
-            Request::RedisDel(req) => write!(f, "RedisDel: {}", req),
-            Request::RedisRename(rename) => write!(f, "RedisRename: {}", rename),
+            Request::Redis(.., redis) => match redis {
+                RedisOperation::RedisSet(req) => write!(f, "RedisSet: {}", req),
+                RedisOperation::RedisMset(req) => write!(f, "RedisMset: {}", req),
+                RedisOperation::RedisDel(req) => write!(f, "RedisDel: {}", req),
+                RedisOperation::RedisRename(req) => write!(f, "RedisRename: {}", req),
+            },
         }
     }
 }

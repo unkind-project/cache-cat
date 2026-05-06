@@ -59,7 +59,14 @@ impl Command for ExistsCommand {
         let _shard_lock = server.app.state_machine.data.kvs.write_lock.lock();
         let _exclusive_lock = server.app.state_machine.data.kvs.read_lock.lock();
         for key in &params.keys {
-            if server.app.state_machine.data.kvs.cache.contains_key(key) {
+            if server
+                .app
+                .state_machine
+                .data
+                .kvs
+                .get_value_with_read_clock(key)
+                .is_some()
+            {
                 counter += 1;
             }
         }

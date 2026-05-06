@@ -78,11 +78,15 @@ impl Command for HIncrByCommand {
     async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
         // Parse arguments
         let params = Self::parse_args(items)?;
-        let req = Request::Base(HIncr(HIncrReq {
-            key: Arc::from(params.key),
-            field: Arc::from(params.field),
-            value: params.increment,
-        }));
+        let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
+        let req = Request::Base(
+            write_clock,
+            HIncr(HIncrReq {
+                key: Arc::from(params.key),
+                field: Arc::from(params.field),
+                value: params.increment,
+            }),
+        );
         let res = server
             .app
             .raft

@@ -51,9 +51,14 @@ pub struct PersistCommand;
 impl Command for PersistCommand {
     async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
         let params = PersistParams::parse(items)?;
-        let request = Request::Base(Persist(PersistReq {
-            key: Arc::from(params.key),
-        }));
+        let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
+
+        let request = Request::Base(
+            write_clock,
+            Persist(PersistReq {
+                key: Arc::from(params.key),
+            }),
+        );
         let res = server
             .app
             .raft

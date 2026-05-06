@@ -50,10 +50,15 @@ impl Command for SAddCommand {
         for v in params.members {
             elements.push(Arc::new(v));
         }
-        let request = Request::Base(SAdd(SAddReq {
-            key: Arc::from(params.key),
-            elements: elements,
-        }));
+        let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
+
+        let request = Request::Base(
+            write_clock,
+            SAdd(SAddReq {
+                key: Arc::from(params.key),
+                elements,
+            }),
+        );
         let res = server
             .app
             .raft

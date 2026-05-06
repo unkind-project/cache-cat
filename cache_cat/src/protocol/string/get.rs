@@ -42,7 +42,12 @@ async fn get_value(server: &RedisServer, key: &Vec<u8>) -> CacheCatResult<Option
         .await
         .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
     let lock = server.app.state_machine.data.kvs.write_lock.lock().await;
-    let value = server.app.state_machine.data.kvs.cache.get(key);
+    let value = server
+        .app
+        .state_machine
+        .data
+        .kvs
+        .get_value_with_read_clock(key);
     drop(lock);
     match value {
         None => Ok(None),

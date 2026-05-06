@@ -101,8 +101,17 @@ async fn print_test(_app: Arc<CacheCatApp>, d: PrintTestReq) -> Result<PrintTest
 // 主节点才能成功调用这个方法，其他节点会失败
 pub async fn write(
     app: Arc<CacheCatApp>,
-    req: Request,
+    mut req: Request,
 ) -> Result<ClientWriteResponse<TypeConfig>, String> {
+    let write_clock = app.state_machine.data.kvs.get_new_write_clock();
+    match req {
+        Request::Base(ref mut time, _) => {
+            *time = write_clock;
+        }
+        Request::Redis(ref mut time, _) => {
+            *time = write_clock;
+        }
+    }
     app.raft.client_write(req).await.map_err(|e| {
         tracing::error!("write error: {:?}", e);
         e.to_string()

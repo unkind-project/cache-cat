@@ -9,7 +9,8 @@ use crate::error::{CacheCatError, ProtocolError, StorageError};
 use crate::protocol::command::Command;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::entry::request::Request;
+use crate::raft::types::entry::request::Request::Redis;
+use crate::raft::types::entry::request::{RedisOperation, Request};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -62,7 +63,9 @@ pub struct RenameCommand;
 impl Command for RenameCommand {
     async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
         let params = RenameParams::parse(items)?;
-        let request = Request::RedisRename(params);
+        let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
+
+        let request = Redis(write_clock, RedisOperation::RedisRename(params));
         let res = server
             .app
             .raft

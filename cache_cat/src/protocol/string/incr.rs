@@ -42,10 +42,12 @@ impl Command for IncrCommand {
             key: Arc::from(params.key),
             value: 1,
         };
+        let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
+
         let res = server
             .app
             .raft
-            .client_write(Request::Base(Incr(req)))
+            .client_write(Request::Base(write_clock, Incr(req)))
             .await
             .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
         match res.data {

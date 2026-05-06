@@ -1,10 +1,10 @@
 use crate::error::{CacheCatError, ProtocolError, StorageError};
 use crate::protocol::command::Command;
+use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::core::value_object::{HashValue, ValueObject};
 use async_trait::async_trait;
 use openraft::ReadPolicy::LeaseRead;
-use crate::raft::network::redis_server::RedisServer;
 
 pub struct HGetCommand;
 
@@ -38,7 +38,12 @@ impl Command for HGetCommand {
             .await
             .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
         let read_lock = server.app.state_machine.data.kvs.read_lock.lock().await;
-        let my_value = server.app.state_machine.data.kvs.cache.get(&key);
+        let my_value = server
+            .app
+            .state_machine
+            .data
+            .kvs
+            .get_value_with_read_clock(&key);
         drop(read_lock);
 
         match my_value {

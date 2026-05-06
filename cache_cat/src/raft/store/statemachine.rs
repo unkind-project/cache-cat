@@ -10,7 +10,7 @@ use crate::raft::types::core::moka::moka::{MyCache, UpdateType};
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::core::value_object::ValueObject;
 use crate::raft::types::entry::bae_operation::{BaseOperation, DelReq, InsertReq, SetReq};
-use crate::raft::types::entry::request::{AtomicRequest, Request};
+use crate::raft::types::entry::request::{AtomicRequest, RedisOperation, Request};
 use crate::raft::types::file_operator::FileOperator;
 use crate::raft::types::raft_types::{NodeId, TypeConfig};
 use crate::utils::now_ms;
@@ -161,37 +161,51 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
             let response = match entry.payload {
                 EntryPayload::Blank => Value::ok(),
                 EntryPayload::Normal(req) => match req {
-                    Request::Base(base) => match base {
-                        BaseOperation::Set(set) => {
-                            st.set(set, update_type);
-                            Value::ok()
-                        }
-                        BaseOperation::Expire(expire) => st.expire(expire, update_type),
-                        BaseOperation::LPush(l_push) => st.l_push(l_push, update_type),
-                        BaseOperation::Del(del) => {
-                            if st.del(del, update_type) {
-                                Value::Integer(1)
-                            } else {
-                                Value::Integer(0)
+                    Request::Base(time, base) => {
+                        let write_clock = st.set_write_clock(time);
+                        match base {
+                            BaseOperation::Set(set) => {
+                                st.set(set, update_type);
+                                Value::ok()
+                            }
+                            BaseOperation::Expire(expire) => st.expire(expire, update_type),
+                            BaseOperation::LPush(l_push) => st.l_push(l_push, update_type),
+                            BaseOperation::Del(del) => {
+                                if st.del(del, update_type) {
+                                    Value::Integer(1)
+                                } else {
+                                    Value::Integer(0)
+                                }
+                            }
+                            BaseOperation::Incr(incr) => st.incr(incr, update_type),
+                            BaseOperation::Append(append) => st.append(append, update_type),
+                            BaseOperation::HSet(h_set) => st.h_set(h_set, update_type),
+                            BaseOperation::HIncr(h_get) => st.h_incr(h_get, update_type),
+                            BaseOperation::ZAdd(z_add) => st.z_add(z_add, update_type),
+                            BaseOperation::SAdd(s_add) => st.s_add(s_add, update_type),
+                            BaseOperation::Persist(persist) => st.persist(persist, update_type),
+                            BaseOperation::Insert(insert) => {
+                                st.insert(insert, update_type);
+                                Value::ok()
                             }
                         }
-                        BaseOperation::Incr(incr) => st.incr(incr, update_type),
-                        BaseOperation::Append(append) => st.append(append, update_type),
-                        BaseOperation::HSet(h_set) => st.h_set(h_set, update_type),
-                        BaseOperation::HIncr(h_get) => st.h_incr(h_get, update_type),
-                        BaseOperation::ZAdd(z_add) => st.z_add(z_add, update_type),
-                        BaseOperation::SAdd(s_add) => st.s_add(s_add, update_type),
-                        BaseOperation::Persist(persist) => st.persist(persist, update_type),
-                        BaseOperation::Insert(insert) => {
-                            st.insert(insert, update_type);
-                            Value::ok()
+                    }
+                    Request::Redis(time, redis) => {
+                        let write_clock = st.set_write_clock(time);
+                        match redis {
+                            RedisOperation::RedisDel(del) => {
+                                redis_del_hand(st, del, update_type).await
+                            }
+                            RedisOperation::RedisSet(set) => {
+                                redis_set_hand(st, set, update_type, write_clock).await
+                            }
+                            RedisOperation::RedisMset(mset) => {
+                                redis_mset_hand(st, mset, update_type).await
+                            }
+                            RedisOperation::RedisRename(rename) => {
+                                redis_rename_hand(st, rename, update_type).await
+                            }
                         }
-                    },
-                    Request::RedisDel(del) => redis_del_hand(st, del, update_type).await,
-                    Request::RedisSet(set) => redis_set_hand(st, set, update_type).await,
-                    Request::RedisMset(mset) => redis_mset_hand(st, mset, update_type).await,
-                    Request::RedisRename(rename) => {
-                        redis_rename_hand(st, rename, update_type).await
                     }
                 },
                 EntryPayload::Membership(mem) => {
@@ -355,9 +369,10 @@ pub async fn redis_set_hand(
     cache: &MyCache,
     params: SetParams,
     update_type: &mut UpdateType<'_>,
+    time: u64,
 ) -> Value {
-    // Get current timestamp once for all expiration calculations
-    let now = now_ms();
+    // 最新的写逻辑时间
+    let now = time;
 
     enum ExistingKey {
         None,               // Key doesn't exist

@@ -314,11 +314,14 @@ async fn run_engine(
                     let res: Result<ClientWriteResponse<TypeConfig>, _> = client_c
                         .call(
                             2,
-                            Request::Base(BaseOperation::Set(SetReq {
-                                key: i.to_string().into_bytes().into(),
-                                value: Vec::from("xxx").into(),
-                                ex_time: 0,
-                            })),
+                            Request::Base(
+                                0,
+                                BaseOperation::Set(SetReq {
+                                    key: i.to_string().into_bytes().into(),
+                                    value: Vec::from("xxx").into(),
+                                    ex_time: 0,
+                                }),
+                            ),
                         )
                         .await;
                     success = res.is_ok();
@@ -328,11 +331,14 @@ async fn run_engine(
                         .expect("pwrite 模式需要 pipeline client");
 
                     let res: Result<ClientWriteResponse<TypeConfig>, _> = pipeline_client
-                        .call(Request::Base(BaseOperation::Set(SetReq {
-                            key: Arc::from(format!("test{}", i).into_bytes()),
-                            value: Arc::from(format!("test_value_{}", i).into_bytes()),
-                            ex_time: 0,
-                        })))
+                        .call(Request::Base(
+                            0,
+                            BaseOperation::Set(SetReq {
+                                key: Arc::from(format!("test{}", i).into_bytes()),
+                                value: Arc::from(format!("test_value_{}", i).into_bytes()),
+                                ex_time: 0,
+                            }),
+                        ))
                         .await;
                     success = res.is_ok();
                 } else {

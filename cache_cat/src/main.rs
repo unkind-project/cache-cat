@@ -4,6 +4,7 @@ use cache_cat::raft::types::entry::bae_operation::BaseOperation::Set;
 use cache_cat::raft::types::entry::bae_operation::SetReq;
 use cache_cat::raft::types::entry::request::Request;
 use cache_cat::raft::types::raft_types::CacheCatApp;
+use cache_cat::utils::times::now_ms;
 use mimalloc::MiMalloc;
 use std::env;
 use std::error::Error;
@@ -65,11 +66,14 @@ async fn benchmark_requests(apps: Arc<CacheCatApp>) {
         let handle = tokio::spawn(async move {
             for i in 0..num {
                 // sleep(std::time::Duration::from_millis(1)).await;
-                let request = Request::Base(Set(SetReq {
-                    key: Arc::from((num).to_be_bytes().to_vec()),
-                    value: Arc::from(Vec::from(format!("value_{}", i))),
-                    ex_time: 0,
-                }));
+                let request = Request::Base(
+                    now_ms(),
+                    Set(SetReq {
+                        key: Arc::from((num).to_be_bytes().to_vec()),
+                        value: Arc::from(Vec::from(format!("value_{}", i))),
+                        ex_time: 0,
+                    }),
+                );
                 //往第一个group发送请求
                 apps_clone.raft.client_write(request).await.unwrap();
             }

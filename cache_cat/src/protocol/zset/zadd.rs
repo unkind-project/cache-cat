@@ -165,15 +165,20 @@ impl Command for ZAddCommand {
         for v in params.members {
             elements.push((Arc::new(v.0), v.1));
         }
-        let request = Request::Base(ZAdd(ZAddReq {
-            key: Arc::from(params.key),
-            nx: params.nx,
-            xx: params.xx,
-            gt: params.gt,
-            lt: params.lt,
-            ch: params.ch,
-            members: elements,
-        }));
+        let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
+
+        let request = Request::Base(
+            write_clock,
+            ZAdd(ZAddReq {
+                key: Arc::from(params.key),
+                nx: params.nx,
+                xx: params.xx,
+                gt: params.gt,
+                lt: params.lt,
+                ch: params.ch,
+                members: elements,
+            }),
+        );
         let res = server
             .app
             .raft

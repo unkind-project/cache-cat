@@ -7,6 +7,7 @@ mod tests {
     use crate::raft::types::entry::bae_operation::{BaseOperation, SetReq};
     use crate::raft::types::entry::request::Request;
     use crate::raft::types::raft_types::TypeConfig;
+    use crate::utils::now_ms;
     use openraft::RPCTypes::Vote;
     use openraft::error::Timeout;
     use openraft::raft::{ClientWriteResponse, WriteResult};
@@ -33,11 +34,14 @@ mod tests {
             let r: ClientWriteResponse<TypeConfig> = client
                 .call(
                     2,
-                    Request::Base(BaseOperation::Set(SetReq {
-                        key: Arc::from(format!("test_{}", i).into_bytes()),
-                        value: Arc::from(format!("test_value_{}", i).into_bytes()),
-                        ex_time: 0,
-                    })),
+                    Request::Base(
+                        now_ms(),
+                        BaseOperation::Set(SetReq {
+                            key: Arc::from(format!("test_{}", i).into_bytes()),
+                            value: Arc::from(format!("test_value_{}", i).into_bytes()),
+                            ex_time: 0,
+                        }),
+                    ),
                 )
                 .await
                 .expect("write call failed");
@@ -114,11 +118,14 @@ mod tests {
         let client = PipelineMultiClient::connect("127.0.0.1:5001", 3)
             .await
             .expect("connect failed");
-        let a = Request::Base(BaseOperation::Set(SetReq {
-            key: Arc::from(format!("test{}", 1).into_bytes()),
-            value: Arc::from(format!("test_value_{}", 1).into_bytes()),
-            ex_time: 0,
-        }));
+        let a = Request::Base(
+            now_ms(),
+            BaseOperation::Set(SetReq {
+                key: Arc::from(format!("test{}", 1).into_bytes()),
+                value: Arc::from(format!("test_value_{}", 1).into_bytes()),
+                ex_time: 0,
+            }),
+        );
 
         let x: ClientWriteResponse<TypeConfig> =
             client.call(a.clone()).await.expect("write call failed");

@@ -92,15 +92,16 @@ pub struct ExpireCommand;
 impl Command for ExpireCommand {
     async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
         let params = ExpireParams::parse(items)?;
+        let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
         let req = ExpireReq {
             key: Arc::from(params.key),
-            expires_at: params.seconds * 1000 + now_ms(),
+            expires_at: params.seconds * 1000 + write_clock,
             condition: params.condition,
         };
         let res = server
             .app
             .raft
-            .client_write(Request::Base(Expire(req)))
+            .client_write(Request::Base(write_clock, Expire(req)))
             .await
             .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
         match res.data {

@@ -2,6 +2,7 @@ use crate::error::{CacheCatError, ProtocolError, StorageError};
 use crate::protocol::command::Command;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
+use crate::raft::types::entry::request::RedisOperation::RedisSet;
 use crate::raft::types::entry::request::Request;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -188,12 +189,13 @@ pub struct SetCommand;
 impl Command for SetCommand {
     async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
         let params = SetParams::parse(items)?;
+        let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
 
         let get = params.get;
         let res = server
             .app
             .raft
-            .client_write(Request::RedisSet(params))
+            .client_write(Request::Redis(write_clock, RedisSet(params)))
             .await
             .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
         if get { Ok(res.data) } else { Ok(Value::ok()) }

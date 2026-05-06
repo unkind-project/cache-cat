@@ -13,6 +13,7 @@ use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::bae_operation::BaseOperation::Del;
 use crate::raft::types::entry::bae_operation::DelReq;
+use crate::raft::types::entry::request::RedisOperation::RedisDel;
 use crate::raft::types::entry::request::Request;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -60,12 +61,17 @@ pub struct DelCommand;
 impl Command for DelCommand {
     async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
         let params = DelParams::parse(items)?;
+        let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
+
         let request = if params.keys.len() == 1 {
-            Request::Base(Del(DelReq {
-                key: Arc::new(params.keys[0].clone()),
-            }))
+            Request::Base(
+                write_clock,
+                Del(DelReq {
+                    key: Arc::new(params.keys[0].clone()),
+                }),
+            )
         } else {
-            Request::RedisDel(params)
+            Request::Redis(write_clock, RedisDel(params))
         };
         let res = server
             .app
