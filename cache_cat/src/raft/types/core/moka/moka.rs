@@ -4,8 +4,10 @@ use crate::utils::now_ms;
 use moka::Expiry;
 use moka::sync::Cache;
 use serde::{Deserialize, Serialize};
+use std::cmp::max;
 use std::option::Option;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 
@@ -23,12 +25,8 @@ impl MyValue {
     }
 }
 
-// =====================
 // 自定义 Expiry
-// =====================
-
 struct MyExpiry;
-
 impl Expiry<Arc<Vec<u8>>, MyValue> for MyExpiry {
     //创建或更新后的定时删除逻辑
     fn expire_after_create(
@@ -76,9 +74,35 @@ pub struct MyCache {
     // 这俩把锁是为了保证每条指令的原子性 多key写，多key读需要同时获取俩把锁 同时获取俩把锁时 先加write_lock
     pub write_lock: Arc<Mutex<()>>, //单key写
     pub read_lock: Arc<Mutex<()>>,  //单key读
+
+    pub read_logic_clock: Arc<AtomicU64>,  //读逻辑时钟
+    pub write_logic_clock: Arc<AtomicU64>, //写逻辑时钟
 }
 
 impl MyCache {
+    pub fn get_and_update_read_clock(&self) -> u64 {
+        let write_time = self.write_logic_clock.load(Ordering::Relaxed);
+        let system_now = now_ms();
+
+        // 取 write 和 system 的较大者作为更新目标
+        let target = max(write_time, system_now);
+
+        // 使用 fetch_max 自动完成：
+        // 如果 target > current，则更新并返回旧值；否则不更新。
+        // 注意：fetch_max 返回的是旧值 (previous value)
+        let old_val = self.read_logic_clock.fetch_max(target, Ordering::Relaxed);
+
+        // 最终的逻辑时钟值应该是 target 和旧值中的最大者
+        max(old_val, target)
+    }
+    pub fn get_and_update_write_clock(&self) -> u64 {
+        let read_time = self.read_logic_clock.load(Ordering::Relaxed);
+        let system_now = now_ms();
+        let target = max(read_time, system_now);
+        let old_val = self.write_logic_clock.fetch_max(target, Ordering::Relaxed);
+        max(old_val, target)
+    }
+
     /// 创建 MyCache 时自动初始化内部 Cache
     pub fn new() -> Self {
         let cache = Cache::builder()
@@ -89,6 +113,8 @@ impl MyCache {
             cache,
             write_lock: Arc::new(Mutex::new(())),
             read_lock: Arc::new(Mutex::new(())),
+            read_logic_clock: Arc::new(AtomicU64::new(0)),
+            write_logic_clock: Arc::new(AtomicU64::new(0)),
         }
     }
 

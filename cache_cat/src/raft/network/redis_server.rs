@@ -7,6 +7,7 @@ use futures::{FutureExt, SinkExt, StreamExt, future::BoxFuture, stream::FuturesO
 use std::io::Result as IoResult;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::{Decoder, Encoder, Framed};
 use tracing::{debug, error, info, warn};
@@ -44,8 +45,41 @@ impl Encoder<Value> for RespCodec {
 }
 
 impl RedisServer {
-    async fn process_command(self: Arc<Self>, value: Value) -> Value {
+    async fn process_command(&self, value: Value) -> Value {
         self.cmd_factory.execute(value, &self).await
+    }
+
+    async fn handle_connection_pipeline(
+        self: Arc<Self>,
+        stream: TcpStream,
+        peer_addr: SocketAddr,
+    ) -> IoResult<()> {
+        let framed = Framed::new(stream, RespCodec);
+        let (mut writer, mut reader) = framed.split();
+
+        while let Some(frame_result) = reader.next().await {
+            match frame_result {
+                Ok(value) => {
+                    debug!("Received command from {}: {:?}", peer_addr, value);
+
+                    // 串行执行：等待完成
+                    let resp = self.process_command(value).await;
+
+                    // 再写回
+                    if let Err(e) = writer.send(resp).await {
+                        warn!("Failed to send response to {}: {}", peer_addr, e);
+                        break;
+                    }
+                }
+                Err(e) => {
+                    error!("Protocol error from {}: {}", peer_addr, e);
+                    break;
+                }
+            }
+        }
+
+        info!("Connection handler ended for {}", peer_addr);
+        Ok(())
     }
 
     async fn handle_connection(
@@ -122,7 +156,7 @@ impl RedisServer {
                     let server = Arc::clone(&self);
 
                     tokio::spawn(async move {
-                        if let Err(e) = server.handle_connection(stream, peer_addr).await {
+                        if let Err(e) = server.handle_connection_pipeline(stream, peer_addr).await {
                             error!("Error handling connection from {}: {}", peer_addr, e);
                         }
                     });
