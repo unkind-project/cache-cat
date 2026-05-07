@@ -2,7 +2,11 @@ use crate::config::config::Config;
 use crate::error::Result;
 use crate::raft::types::endpoint::Endpoint;
 use crate::raft::types::raft_types::NodeId;
+use openraft::SnapshotPolicy;
+use serde::{Deserialize, Serialize};
+use std::cmp::max;
 
+#[derive(Clone)]
 pub struct ParsedConfig {
     pub node_id: NodeId,
 
@@ -16,8 +20,18 @@ pub struct ParsedConfig {
 
     pub raft_join: Vec<String>,
 
-    #[allow(dead_code)]
-    pub rocksdb_data_path: String,
+    pub log_path: String,
+
+    /// 选举超时时间，节点之间的时钟偏移不能超过该值 需要大于500
+    pub election_timeout: u64,
+    /// 超过这个值将会直接进行快照，为0代表用不快照
+    pub snapshot_policy: SnapshotPolicy,
+
+    /// 超过这个阈值表示严重落后，需要大于snapshot_policy,防止快照还没生成。
+    pub replication_lag_threshold: u64,
+
+    /// 在没有请求到来时 多少秒进行一次key的清理 0表示不清理
+    pub cleaning_interval: u64,
 }
 
 impl ParsedConfig {
@@ -26,6 +40,12 @@ impl ParsedConfig {
         let raft_advertise_endpoint =
             Endpoint::new(&config.raft.advertise_host, raft_endpoint.port());
 
+        let snapshot_policy = if config.raft.snapshot_policy == 0 {
+            SnapshotPolicy::Never
+        } else {
+            SnapshotPolicy::LogsSinceLast(config.raft.snapshot_policy)
+        };
+        let election_timeout = max(config.raft.election_timeout, 500);
         Ok(ParsedConfig {
             node_id: config.node_id as NodeId,
             raft_endpoint,
@@ -33,7 +53,11 @@ impl ParsedConfig {
             redis_addr: config.redis_addr.clone(),
             raft_single: config.raft.single,
             raft_join: config.raft.join.clone(),
-            rocksdb_data_path: config.raft.log_path.clone(),
+            log_path: config.raft.log_path.clone(),
+            election_timeout,
+            snapshot_policy,
+            replication_lag_threshold: config.raft.replication_lag_threshold,
+            cleaning_interval: config.cleaning_interval,
         })
     }
 }

@@ -14,6 +14,9 @@ pub struct Config {
 
     pub redis_addr: String,
 
+    /// 在没有请求到来时 多少秒进行一次key的清理 0表示不清理
+    pub cleaning_interval: u64,
+
     #[serde(default = "default_raft_config")]
     pub raft: RaftConfig,
 }
@@ -33,6 +36,14 @@ pub struct RaftConfig {
     ///
     /// The value is one or more addresses of a node in the cluster, to which this node sends a `join` request.
     pub join: Vec<String>,
+
+    /// 选举超时时间，节点之间的时钟偏移不能超过该值 需要大于500
+    pub election_timeout: u64,
+    /// 超过这个值将会直接进行快照，为0代表用不快照
+    pub snapshot_policy: u64,
+
+    /// 超过这个阈值表示严重落后，需要大于snapshot_policy,防止快照还没生成。
+    pub replication_lag_threshold: u64,
 }
 
 impl Config {
@@ -41,6 +52,13 @@ impl Config {
         if self.raft.single && !self.raft.join.is_empty() {
             return Err(Error::config(
                 "'single' mode cannot be used together with 'join' configuration",
+            ));
+        }
+        if self.raft.snapshot_policy != 0
+            && self.raft.snapshot_policy > self.raft.replication_lag_threshold
+        {
+            return Err(Error::config(
+                "'snapshot_policy' cannot be greater than 'replication_lag_threshold'",
             ));
         }
 

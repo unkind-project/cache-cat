@@ -1,3 +1,4 @@
+use crate::node::parsed_config::ParsedConfig;
 use crate::protocol::NO_EXPIRATION;
 use crate::protocol::key::del::DelParams;
 use crate::protocol::key::rename::RenameParams;
@@ -95,8 +96,12 @@ impl RaftSnapshotBuilder<TypeConfig> for StateMachineStore {
 }
 
 impl StateMachineStore {
-    pub async fn new(path: PathBuf, node_id: NodeId) -> Result<StateMachineStore, io::Error> {
-        let cache = MyCache::new();
+    pub async fn new(
+        config: ParsedConfig,
+        path: PathBuf,
+        node_id: NodeId,
+    ) -> Result<StateMachineStore, io::Error> {
+        let cache = MyCache::new(config.cleaning_interval);
         let mut sm = Self {
             data: StateMachineData {
                 kvs: cache.clone(),
@@ -151,7 +156,7 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
         let mut guard;
         let update_type = if raft_meta.snapshot_state {
             guard = self.data.incremental_operation_queue.lock().await;
-            &mut UpdateType::Snapshot(&mut guard,0)
+            &mut UpdateType::Snapshot(&mut guard, 0)
         } else {
             &mut UpdateType::None
         };

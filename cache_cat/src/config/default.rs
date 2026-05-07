@@ -7,5 +7,9 @@ pub fn default_raft_config() -> RaftConfig {
         advertise_host: "localhost".to_string(),
         single: true,
         join: vec![],
+        election_timeout: 699,
+        snapshot_policy: 50000,
+        replication_lag_threshold: 60000,
+       
     }
 }

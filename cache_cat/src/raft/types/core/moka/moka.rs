@@ -1,3 +1,4 @@
+use crate::node::parsed_config::ParsedConfig;
 use crate::raft::types::core::value_object::ValueObject;
 use crate::raft::types::entry::request::AtomicRequest;
 use crate::utils::now_ms;
@@ -10,6 +11,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
+use tokio::time;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MyValue {
@@ -117,7 +119,7 @@ impl MyCache {
     }
 
     /// 创建 MyCache 时自动初始化内部 Cache
-    pub fn new() -> Self {
+    pub fn new(cleaning_interval: u64) -> Self {
         let write_logic_clock = Arc::new(AtomicU64::new(0));
         let cache = Cache::builder()
             // .max_capacity(max_capacity)
@@ -125,6 +127,17 @@ impl MyCache {
                 write_logic_clock: write_logic_clock.clone(),
             })
             .build();
+
+        //后台任务
+        let back = cache.clone();
+        tokio::spawn(async move {
+            let mut interval = time::interval(Duration::from_secs(cleaning_interval));
+            loop {
+                interval.tick().await;
+                back.run_pending_tasks();
+            }
+        });
+
         Self {
             cache,
             write_lock: Arc::new(Mutex::new(())),

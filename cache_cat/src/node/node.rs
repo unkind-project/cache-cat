@@ -33,34 +33,32 @@ pub struct RaftNode {
 
 impl RaftNode {
     pub async fn create(app_config: &Config) -> Result<RaftNode> {
-        let node_id = app_config.node_id as NodeId;
-        let dir = Path::new(&app_config.raft.log_path);
+        let config = ParsedConfig::from(app_config)?;
+        let node_id = config.node_id as NodeId;
+        let dir = Path::new(&config.log_path);
         let path = dir.join("");
         let (shutdown_tx, shutdown_rx_for_struct) = broadcast::channel(1);
         let raft_engine = dir.join("raft-engine");
         let engine = create_raft_engine(raft_engine.clone())?;
-        let config = Arc::new(openraft::Config {
+        let raft_config = Arc::new(openraft::Config {
             heartbeat_interval: 500,
-            election_timeout_min: 699,
-            election_timeout_max: 899, // 添加最大选举超时时间
-            purge_batch_size: 1,
-            max_in_snapshot_log_to_keep: 500, //生成快照后要保留的日志数量（以供从节点同步数据）需要大于等于replication_lag_threshold,该参数会影响快照逻辑
+            election_timeout_min: config.election_timeout,
+            election_timeout_max: config.election_timeout + 300, // 添加最大选举超时时间
+            purge_batch_size: 256,                               //积累到一定一定数量后才进删除
+            max_in_snapshot_log_to_keep: config.replication_lag_threshold + 100, //生成快照后要保留的日志数量（以供从节点同步数据）需要大于等于replication_lag_threshold,该参数会影响快照逻辑
             max_append_entries: Some(5000000),
             max_payload_entries: 5000000,
-            snapshot_policy: LogsSinceLast(50), //LogsSinceLast(100),
-            replication_lag_threshold: 200,     //需要大于snapshot_policy
+            snapshot_policy: config.snapshot_policy.clone(), //LogsSinceLast(100),
+            replication_lag_threshold: config.replication_lag_threshold, //需要大于snapshot_policy
             ..Default::default()
         });
         let group_id = 0;
-        // let router = Router::new(app_config.raft.address.clone(), dir.join(""), node_id);
-
-        // let network = MultiNetworkFactory::new(router, group_id);
         let log_store = LogStore::new(group_id, engine.clone());
-        let sm_store = StateMachineStore::new(path.clone(), node_id).await?;
+        let sm_store = StateMachineStore::new(config.clone(),path.clone(), node_id).await?;
         let network = NetworkFactory {};
         let raft = openraft::Raft::new(
             node_id,
-            config.clone(),
+            raft_config.clone(),
             network,
             log_store,
             sm_store.clone(),
@@ -76,7 +74,7 @@ impl RaftNode {
         };
 
         let node = Self {
-            config: ParsedConfig::from(app_config)?,
+            config,
             app: Arc::new(app),
             shutdown_tx,
             _shutdown_rx: shutdown_rx_for_struct,
