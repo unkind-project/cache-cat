@@ -87,21 +87,18 @@ pub struct MyCache {
 }
 
 impl MyCache {
+
+    #[inline]
     pub fn get_and_update_read_clock(&self) -> u64 {
         let write_time = self.write_logic_clock.load(Ordering::Acquire);
         let system_now = now_ms();
-
-        // 取 write 和 system 的较大者作为更新目标
         let target = max(write_time, system_now);
-
-        // 使用 fetch_max 自动完成：
-        // 如果 target > current，则更新并返回旧值；否则不更新。
-        // 注意：fetch_max 返回的是旧值 (previous value)
         let old_val = self.read_logic_clock.fetch_max(target, Ordering::Release);
-
         // 最终的逻辑时钟值应该是 target 和旧值中的最大者
         max(old_val, target)
     }
+
+    #[inline]
     pub fn get_new_write_clock(&self) -> u64 {
         let read_time = self.read_logic_clock.load(Ordering::Acquire);
         let system_now = now_ms();
@@ -146,6 +143,7 @@ impl MyCache {
         }
     }
 
+    #[inline]
     pub fn get_value_with_read_clock(&self, key: &Vec<u8>) -> Option<MyValue> {
         let read_clock = self.get_and_update_read_clock();
         match self.cache.get(key) {

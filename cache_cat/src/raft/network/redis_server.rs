@@ -45,6 +45,8 @@ impl Encoder<Value> for RespCodec {
 }
 
 impl RedisServer {
+
+    #[inline(always)]
     async fn process_command(&self, value: Value) -> Value {
         self.cmd_factory.execute(value, &self).await
     }
