@@ -3,6 +3,7 @@ use crate::protocol::key::rename::RenameParams;
 use crate::protocol::string::mset::MsetParams;
 use crate::protocol::string::set::SetParams;
 use crate::raft::types::entry::bae_operation::BaseOperation;
+use crate::utils::merge_u64;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -12,6 +13,26 @@ pub enum Request {
     Base(u64, BaseOperation),
     Redis(u64, RedisOperation),
 }
+impl Request {
+    pub fn new_base(request: BaseOperation, write_clock: u64, db_number: u16) -> Self {
+        Request::Base(merge_u64(write_clock, db_number), request)
+    }
+    pub fn new_redis(request: RedisOperation, write_clock: u64, db_number: u16) -> Self {
+        Request::Redis(merge_u64(write_clock, db_number), request)
+    }
+
+    #[inline]
+    pub fn split_u64(&self) -> (u64, u16) {
+        let value = match self {
+            Request::Base(value, _) => value,
+            Request::Redis(value, _) => value,
+        };
+        let high_48: u64 = value >> 16; // 取高 48 位 作为当前时间戳毫秒值
+        let low_16: u16 = (value & 0xFFFF) as u16; // 取低 16 位 作为数据库编号
+        (high_48, low_16)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RedisOperation {
     RedisSet(SetParams),
