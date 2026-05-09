@@ -14,6 +14,7 @@ use crate::raft::types::entry::request::{RedisOperation, Request};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
+use std::sync::atomic::AtomicU16;
 
 /// RENAME command parameters
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -61,11 +62,17 @@ pub struct RenameCommand;
 
 #[async_trait]
 impl Command for RenameCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(
+        &self,
+        db_number: &mut u16,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<Value, CacheCatError> {
         let params = RenameParams::parse(items)?;
         let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
 
-        let request = Redis(write_clock, RedisOperation::RedisRename(params));
+        let request =
+            Request::new_redis(write_clock, *db_number, RedisOperation::RedisRename(params));
         let res = server
             .app
             .raft

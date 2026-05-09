@@ -1,6 +1,7 @@
 use crate::error::CacheCatError;
 use crate::protocol::connection::bgsave::BgsaveCommand;
 use crate::protocol::connection::ping::PingCommand;
+use crate::protocol::connection::save::SaveCommand;
 use crate::protocol::hash::hget::HGetCommand;
 use crate::protocol::hash::hincrby::HIncrByCommand;
 use crate::protocol::hash::hset::HSetCommand;
@@ -25,13 +26,19 @@ use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use async_trait::async_trait;
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU16, Ordering};
 use tracing::warn;
-use crate::protocol::connection::save::SaveCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
     /// Execute the command with given RESP items and server context
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError>;
+    async fn execute(
+        &self,
+        db_number: &mut u16,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<Value, CacheCatError>;
 }
 
 /// Command factory for creating and executing commands
@@ -84,7 +91,7 @@ impl CommandFactory {
     }
 
     /// Execute a RESP command on the given server
-    pub async fn execute(&self, value: Value, server: &RedisServer) -> Value {
+    pub async fn execute(&self, db_number: &mut u16, value: Value, server: &RedisServer) -> Value {
         match value {
             Value::Array(Some(items)) if !items.is_empty() => {
                 // Extract command name
@@ -93,10 +100,9 @@ impl CommandFactory {
                     Value::SimpleString(s) => s.to_uppercase(),
                     _ => return Value::error("invalid command format"),
                 };
-
                 // Find and execute command
                 match self.commands.get(&cmd_name) {
-                    Some(cmd) => match cmd.execute(&items, server).await {
+                    Some(cmd) => match cmd.execute(db_number, &items, server).await {
                         Ok(v) => v,
                         Err(e) => {
                             warn!("Command '{}' error: {}", cmd_name, e);

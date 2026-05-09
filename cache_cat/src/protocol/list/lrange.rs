@@ -48,7 +48,12 @@ fn parse_i64(value: &Value) -> Result<i64, ProtocolError> {
 
 #[async_trait]
 impl Command for LRangeCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(
+        &self,
+        db_number: &mut u16,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<Value, CacheCatError> {
         let params = Self::parse_args(items)?;
         let raft = &server.app.raft;
         let linearizer = raft

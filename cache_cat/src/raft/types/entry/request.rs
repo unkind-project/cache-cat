@@ -6,6 +6,7 @@ use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::utils::merge_u64;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::sync::atomic::{AtomicU16, Ordering};
 
 /// A request to the KV store.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -14,10 +15,13 @@ pub enum Request {
     Redis(u64, RedisOperation),
 }
 impl Request {
-    pub fn new_base(request: BaseOperation, write_clock: u64, db_number: u16) -> Self {
+    #[inline]
+    pub fn new_base(write_clock: u64, db_number: u16, request: BaseOperation) -> Self {
         Request::Base(merge_u64(write_clock, db_number), request)
     }
-    pub fn new_redis(request: RedisOperation, write_clock: u64, db_number: u16) -> Self {
+
+    #[inline]
+    pub fn new_redis(write_clock: u64, db_number: u16, request: RedisOperation) -> Self {
         Request::Redis(merge_u64(write_clock, db_number), request)
     }
 

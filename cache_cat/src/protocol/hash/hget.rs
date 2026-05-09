@@ -5,12 +5,18 @@ use crate::raft::types::core::response_value::Value;
 use crate::raft::types::core::value_object::{HashValue, ValueObject};
 use async_trait::async_trait;
 use openraft::ReadPolicy::LeaseRead;
+use std::sync::atomic::AtomicU16;
 
 pub struct HGetCommand;
 
 #[async_trait]
 impl Command for HGetCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(
+        &self,
+        db_number: &mut u16,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<Value, CacheCatError> {
         // Parse HGET key field
         if items.len() < 3 {
             return Err(ProtocolError::WrongArgCount("hget").into());

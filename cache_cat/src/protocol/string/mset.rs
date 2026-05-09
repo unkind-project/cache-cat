@@ -57,15 +57,16 @@ pub struct MsetCommand;
 
 #[async_trait]
 impl Command for MsetCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(&self, db_number: &mut u16, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
         let params = MsetParams::parse(items)?;
         let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
 
         let res = server
             .app
             .raft
-            .client_write(Request::Redis(
+            .client_write(Request::new_redis(
                 write_clock,
+                *db_number,
                 RedisOperation::RedisMset(params),
             ))
             .await

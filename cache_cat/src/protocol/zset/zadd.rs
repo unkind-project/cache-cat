@@ -159,7 +159,7 @@ impl ZAddCommand {
 
 #[async_trait]
 impl Command for ZAddCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(&self,db_number: &mut u16, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
         let params = Self::parse_params(items)?;
         let mut elements = Vec::new();
         for v in params.members {
@@ -167,8 +167,9 @@ impl Command for ZAddCommand {
         }
         let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
 
-        let request = Request::Base(
+        let request = Request::new_base(
             write_clock,
+            *db_number,
             ZAdd(ZAddReq {
                 key: Arc::from(params.key),
                 nx: params.nx,

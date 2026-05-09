@@ -18,6 +18,7 @@ use crate::raft::types::entry::bae_operation::HSetReq;
 use crate::raft::types::entry::request::Request;
 use async_trait::async_trait;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU16;
 
 /// Parsed HSET arguments
 #[derive(Debug)]
@@ -76,7 +77,12 @@ impl HSetCommand {
 
 #[async_trait]
 impl Command for HSetCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(
+        &self,
+        db_number: &mut u16,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<Value, CacheCatError> {
         // Parse arguments
         let params = Self::parse_args(items)?;
         let mut vec = Vec::new();
@@ -92,7 +98,7 @@ impl Command for HSetCommand {
         let res = server
             .app
             .raft
-            .client_write(Request::Base(write_clock, HSet(req)))
+            .client_write(Request::new_base(write_clock, *db_number, HSet(req)))
             .await
             .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
         match res.data {

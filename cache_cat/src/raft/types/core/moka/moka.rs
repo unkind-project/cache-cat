@@ -76,6 +76,7 @@ pub struct MyCache {
     pub have_deleted: Arc<AtomicBool>,
     // 内部 Cache的Clone成本是低廉的
     pub cache: Cache<Arc<Vec<u8>>, MyValue>,
+
     // 这俩把锁是为了保证每条指令的原子性 多key写，多key读需要同时获取俩把锁 同时获取俩把锁时 先加write_lock
     pub write_lock: Arc<Mutex<()>>, //单key写
     pub read_lock: Arc<Mutex<()>>,  //单key读

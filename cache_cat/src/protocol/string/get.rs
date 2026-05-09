@@ -67,7 +67,7 @@ pub struct GetCommand;
 
 #[async_trait]
 impl Command for GetCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(&self,db_number: &mut u16, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
         let params = GetParams::parse(items)?;
 
         match get_value(server, &params.key).await? {

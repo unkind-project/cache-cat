@@ -49,7 +49,12 @@ pub struct IncrByCommand;
 
 #[async_trait]
 impl Command for IncrByCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(
+        &self,
+        db_number: &mut u16,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<Value, CacheCatError> {
         let params = IncrByParams::parse(items)?;
         let req = IncrReq {
             key: Arc::from(params.key),
@@ -60,7 +65,7 @@ impl Command for IncrByCommand {
         let res = server
             .app
             .raft
-            .client_write(Request::Base(write_clock, Incr(req)))
+            .client_write(Request::new_base(write_clock, *db_number, Incr(req)))
             .await
             .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
         match res.data {

@@ -6,6 +6,7 @@ use crate::protocol::string::set::SetMode;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use async_trait::async_trait;
+use std::sync::atomic::AtomicU16;
 use tracing::error;
 
 /// SAVE command handler
@@ -13,7 +14,12 @@ pub struct SaveCommand;
 
 #[async_trait]
 impl Command for SaveCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(
+        &self,
+        db_number: &mut u16,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<Value, CacheCatError> {
         if items.len() >= 2 {
             return Err(ProtocolError::WrongArgCount("save").into());
         }

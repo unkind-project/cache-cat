@@ -7,6 +7,7 @@ use crate::raft::types::entry::bae_operation::BaseOperation::Append;
 use crate::raft::types::entry::request::Request;
 use async_trait::async_trait;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU16, Ordering};
 
 /// Parameters for APPEND command
 #[derive(Debug, Clone, PartialEq)]
@@ -49,18 +50,27 @@ pub struct AppendCommand;
 
 #[async_trait]
 impl Command for AppendCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(
+        &self,
+        db_number: &mut u16,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<Value, CacheCatError> {
         let params = AppendParams::parse(items)?;
-        let req = AppendReq {
-            key: Arc::from(params.key),
-            value: Arc::from(params.value),
-        };
         let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
+        let req = Request::new_base(
+            write_clock,
+            *db_number,
+            Append(AppendReq {
+                key: Arc::from(params.key),
+                value: Arc::from(params.value),
+            }),
+        );
 
         let res = server
             .app
             .raft
-            .client_write(Request::Base(write_clock, Append(req)))
+            .client_write(req)
             .await
             .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
         match res.data {

@@ -13,6 +13,7 @@ use crate::raft::types::entry::bae_operation::HIncrReq;
 use crate::raft::types::entry::request::Request;
 use async_trait::async_trait;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU16;
 
 /// Parsed HINCRBY arguments
 #[derive(Debug)]
@@ -75,12 +76,18 @@ impl HIncrByCommand {
 
 #[async_trait]
 impl Command for HIncrByCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(
+        &self,
+        db_number: &mut u16,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<Value, CacheCatError> {
         // Parse arguments
         let params = Self::parse_args(items)?;
         let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
-        let req = Request::Base(
+        let req = Request::new_base(
             write_clock,
+            *db_number,
             HIncr(HIncrReq {
                 key: Arc::from(params.key),
                 field: Arc::from(params.field),

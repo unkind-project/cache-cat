@@ -2,7 +2,7 @@
 
 ## 问题描述
 
-现在要实现Raft版本的Redis。现在有俩个Redis命令。分别为
+现在Cache-cat要实现Raft版本的Redis。现在有俩个Redis命令。分别为
 
 set key value px [固定的过期时间]
 

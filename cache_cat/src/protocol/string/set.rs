@@ -7,6 +7,7 @@ use crate::raft::types::entry::request::Request;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use std::sync::atomic::{AtomicU16, Ordering};
 
 /// Expiration time options for SET command
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -187,15 +188,24 @@ pub struct SetCommand;
 
 #[async_trait]
 impl Command for SetCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(
+        &self,
+        db_number: &mut u16,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<Value, CacheCatError> {
         let params = SetParams::parse(items)?;
         let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
-
         let get = params.get;
+        let request = Request::new_redis(
+            write_clock,
+            *db_number,
+            RedisSet(params),
+        );
         let res = server
             .app
             .raft
-            .client_write(Request::Redis(write_clock, RedisSet(params)))
+            .client_write(request)
             .await
             .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
         if get { Ok(res.data) } else { Ok(Value::ok()) }

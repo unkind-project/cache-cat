@@ -59,7 +59,7 @@ pub struct MgetCommand;
 
 #[async_trait]
 impl Command for MgetCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(&self,db_number: &mut u16, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
         let params = MgetParams::parse(items)?;
         let raft = &server.app.raft;
         let linearizer = raft

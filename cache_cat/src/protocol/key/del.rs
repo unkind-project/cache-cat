@@ -19,6 +19,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
+use std::sync::atomic::AtomicU16;
 
 /// DEL command parameters
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -59,19 +60,25 @@ pub struct DelCommand;
 
 #[async_trait]
 impl Command for DelCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(
+        &self,
+        db_number: &mut u16,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<Value, CacheCatError> {
         let params = DelParams::parse(items)?;
         let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
 
         let request = if params.keys.len() == 1 {
-            Request::Base(
+            Request::new_base(
                 write_clock,
+                *db_number,
                 Del(DelReq {
                     key: Arc::new(params.keys[0].clone()),
                 }),
             )
         } else {
-            Request::Redis(write_clock, RedisDel(params))
+            Request::new_redis(write_clock, *db_number, RedisDel(params))
         };
         let res = server
             .app

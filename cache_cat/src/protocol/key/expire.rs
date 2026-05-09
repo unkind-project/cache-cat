@@ -9,6 +9,7 @@ use crate::utils::now_ms;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::sync::atomic::AtomicU16;
 
 /// Expire condition flags (NX, XX, GT, LT)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -90,7 +91,12 @@ pub struct ExpireCommand;
 
 #[async_trait]
 impl Command for ExpireCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(
+        &self,
+        db_number: &mut u16,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<Value, CacheCatError> {
         let params = ExpireParams::parse(items)?;
         let write_clock = server.app.state_machine.data.kvs.get_new_write_clock();
         let req = ExpireReq {
@@ -101,7 +107,7 @@ impl Command for ExpireCommand {
         let res = server
             .app
             .raft
-            .client_write(Request::Base(write_clock, Expire(req)))
+            .client_write(Request::new_base(write_clock, *db_number, Expire(req)))
             .await
             .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
         match res.data {

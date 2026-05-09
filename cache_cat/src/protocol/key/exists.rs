@@ -9,6 +9,7 @@ use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use async_trait::async_trait;
 use openraft::ReadPolicy::LeaseRead;
+use std::sync::atomic::AtomicU16;
 
 /// EXISTS command parameters
 #[derive(Debug, Clone, PartialEq)]
@@ -44,7 +45,12 @@ pub struct ExistsCommand;
 
 #[async_trait]
 impl Command for ExistsCommand {
-    async fn execute(&self, items: &[Value], server: &RedisServer) -> Result<Value, CacheCatError> {
+    async fn execute(
+        &self,
+        db_number: &mut u16,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<Value, CacheCatError> {
         let params = ExistsParams::parse(items)?;
         let raft = &server.app.raft;
         let linearizer = raft
