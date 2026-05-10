@@ -130,19 +130,11 @@ pub async fn batch_write(
 }
 
 async fn read(app: Arc<CacheCatApp>, get_req: GetReq) -> Result<GetRes, String> {
-    let ret = app.raft.get_read_linearizer(LeaseRead).await;
+    let value = app
+        .read(get_req.key, get_req.db_number)
+        .await
+        .map_err(|e| e.to_string())?;
 
-    let value = match ret {
-        Ok(linearizer) => {
-            linearizer
-                .await_ready(&app.raft)
-                .await
-                .map_err(|e| e.to_string())?;
-            let cache = app.state_machine.data.kvs.get_cache(0).unwrap();
-            cache.get(&get_req.key)
-        }
-        Err(e) => return Err(e.to_string()),
-    };
     match value {
         None => Ok(GetRes { value: None }),
         Some(v) => match v.data {
