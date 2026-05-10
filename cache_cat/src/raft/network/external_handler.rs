@@ -104,14 +104,7 @@ pub async fn write(
     mut req: Request,
 ) -> Result<ClientWriteResponse<TypeConfig>, String> {
     let write_clock = app.state_machine.data.kvs.get_new_write_clock();
-    match req {
-        Request::Base(ref mut time, _) => {
-            *time = write_clock;
-        }
-        Request::Redis(ref mut time, _) => {
-            *time = write_clock;
-        }
-    }
+    req.set_write_clock(write_clock);
     app.raft.client_write(req).await.map_err(|e| {
         tracing::error!("write error: {:?}", e);
         e.to_string()

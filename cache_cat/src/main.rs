@@ -35,13 +35,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Load configuration first (without logging)
     let config = load_config(&config_path)?;
 
-    let _raft_node = RaftNodeBuilder::build(&config).await?;
-    // if config.node_id == 1 {
-    //     let app_clone = raft_node.app.clone();
-    //     tokio::spawn(async move {
-    //         benchmark_requests(app_clone).await;
-    //     });
-    // }
+    let raft_node = RaftNodeBuilder::build(&config).await?;
+    if config.node_id == 1 {
+        let app_clone = raft_node.app.clone();
+        tokio::spawn(async move {
+            benchmark_requests(app_clone).await;
+        });
+    }
     // Wait for Ctrl+C
     info!("Press Ctrl+C to shutdown...");
     signal::ctrl_c().await?;
@@ -66,8 +66,9 @@ async fn benchmark_requests(apps: Arc<CacheCatApp>) {
         let handle = tokio::spawn(async move {
             for i in 0..num {
                 // sleep(std::time::Duration::from_millis(1)).await;
-                let request = Request::Base(
-                    now_ms(),
+                let request = Request::new_base(
+                    apps_clone.state_machine.data.kvs.get_write_clock(),
+                    0,
                     Set(SetReq {
                         key: Arc::from((num).to_be_bytes().to_vec()),
                         value: Arc::from(Vec::from(format!("value_{}", i))),

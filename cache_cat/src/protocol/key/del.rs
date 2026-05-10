@@ -19,7 +19,6 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
-use std::sync::atomic::AtomicU16;
 
 /// DEL command parameters
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
