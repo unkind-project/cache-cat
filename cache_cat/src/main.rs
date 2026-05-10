@@ -36,12 +36,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let config = load_config(&config_path)?;
 
     let raft_node = RaftNodeBuilder::build(&config).await?;
-    if config.node_id == 1 {
-        let app_clone = raft_node.app.clone();
-        tokio::spawn(async move {
-            benchmark_requests(app_clone).await;
-        });
-    }
+    // if config.node_id == 1 {
+    //     let app_clone = raft_node.app.clone();
+    //     tokio::spawn(async move {
+    //         benchmark_requests(app_clone).await;
+    //     });
+    // }
     // Wait for Ctrl+C
     info!("Press Ctrl+C to shutdown...");
     signal::ctrl_c().await?;
@@ -59,7 +59,7 @@ async fn benchmark_requests(apps: Arc<CacheCatApp>) {
     let start_time = std::time::Instant::now();
     let mut handles = Vec::new();
     let thread = 50;
-    let num: u32 = 1000;
+    let num: u32 = 2000;
     // 创建 100 个并发任务
     for _ in 0..thread {
         let apps_clone = apps.clone();
