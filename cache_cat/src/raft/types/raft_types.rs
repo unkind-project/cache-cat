@@ -4,7 +4,7 @@ use crate::raft::store::statemachine::StateMachineStore;
 use crate::raft::types::core::moka::moka::MyValue;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::bae_operation::BaseOperation;
-use crate::raft::types::entry::request::{RedisOperation, Request};
+use crate::raft::types::entry::request::{Operation, RedisOperation, Request};
 use crate::raft::types::file_operator::FileOperator;
 use openraft::ReadPolicy::LeaseRead;
 use serde::Deserialize;
@@ -50,28 +50,9 @@ pub struct CacheCatApp {
 }
 
 impl CacheCatApp {
-    pub async fn write_redis(
-        &self,
-        op: RedisOperation,
-        db_number: u16,
-    ) -> Result<Value, CacheCatError> {
+    pub async fn write(&self, op: Operation, db_number: u16) -> Result<Value, CacheCatError> {
         let write_clock = self.state_machine.data.kvs.get_new_write_clock();
-        let request = Request::new_redis(write_clock, db_number, op);
-        let res = self
-            .raft
-            .client_write(request)
-            .await
-            .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
-        Ok(res.data)
-    }
-
-    pub async fn write_base(
-        &self,
-        op: BaseOperation,
-        db_number: u16,
-    ) -> Result<Value, CacheCatError> {
-        let write_clock = self.state_machine.data.kvs.get_new_write_clock();
-        let request = Request::new_base(write_clock, db_number, op);
+        let request = Request::new(write_clock, db_number, op);
         let res = self
             .raft
             .client_write(request)

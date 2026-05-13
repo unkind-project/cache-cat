@@ -1,8 +1,10 @@
 use crate::error::{CacheCatError, ProtocolError};
 use crate::protocol::command::{Client, Command};
+use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::request::RedisOperation::RedisSet;
+use crate::raft::types::entry::request::{Operation, RedisOperation, Request};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -184,6 +186,13 @@ fn parse_u64(value: &Value) -> Result<u64, ProtocolError> {
 /// SET command executor
 pub struct SetCommand;
 
+impl RaftCommand for SetCommand {
+    fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError> {
+        let params = SetParams::parse(items)?;
+        Ok(Operation::Redis(RedisSet(params)))
+    }
+}
+
 #[async_trait]
 impl Command for SetCommand {
     async fn execute(
@@ -194,7 +203,10 @@ impl Command for SetCommand {
     ) -> Result<Value, CacheCatError> {
         let params = SetParams::parse(items)?;
         let get = params.get;
-        let value = server.app.write_redis(RedisSet(params), client.db_number).await?;
+        let value = server
+            .app
+            .write(Operation::Redis(RedisSet(params)), client.db_number)
+            .await?;
         if get { Ok(value) } else { Ok(Value::ok()) }
     }
 }

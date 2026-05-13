@@ -1,9 +1,12 @@
 use crate::error::{CacheCatError, ProtocolError};
 use crate::protocol::command::{Client, Command};
+use crate::protocol::hash::hincrby::HIncrByCommand;
+use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::entry::bae_operation::BaseOperation::SAdd;
-use crate::raft::types::entry::bae_operation::SAddReq;
+use crate::raft::types::entry::bae_operation::BaseOperation::{HIncr, SAdd};
+use crate::raft::types::entry::bae_operation::{HIncrReq, SAddReq};
+use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -40,6 +43,19 @@ impl SAddCommand {
         Ok(SAddArgs { key, members })
     }
 }
+impl RaftCommand for SAddCommand {
+    fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError> {
+        let params = Self::parse_args(items)?;
+        let mut elements = Vec::new();
+        for v in params.members {
+            elements.push(Arc::new(v));
+        }
+        Ok(Operation::Base(SAdd(SAddReq {
+            key: Arc::from(params.key),
+            elements,
+        })))
+    }
+}
 
 #[async_trait]
 impl Command for SAddCommand {
@@ -49,16 +65,9 @@ impl Command for SAddCommand {
         items: &[Value],
         server: &RedisServer,
     ) -> Result<Value, CacheCatError> {
-        let params = Self::parse_args(items)?;
-        let mut elements = Vec::new();
-        for v in params.members {
-            elements.push(Arc::new(v));
-        }
-        let operation = SAdd(SAddReq {
-            key: Arc::from(params.key),
-            elements,
-        });
-        let value = server.app.write_base(operation, client.db_number).await?;
+        // Parse arguments
+        let operation = self.raft_request(items)?;
+        let value = server.app.write(operation, client.db_number).await?;
         Ok(value)
     }
 }

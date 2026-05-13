@@ -4,9 +4,13 @@ use crate::raft::network::redis_server::RedisServer;
 use std::sync::Arc;
 
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::entry::bae_operation::BaseOperation::Incr;
-use crate::raft::types::entry::bae_operation::IncrReq;
+use crate::raft::types::entry::bae_operation::BaseOperation::{HIncr, Incr};
+use crate::raft::types::entry::bae_operation::{HIncrReq, IncrReq};
 use async_trait::async_trait;
+use crate::protocol::hash::hincrby::HIncrByCommand;
+use crate::protocol::raft_command::RaftCommand;
+use crate::protocol::string::incr::{IncrCommand, IncrParams};
+use crate::raft::types::entry::request::Operation;
 
 /// Parameters for INCR command
 #[derive(Debug, Clone, PartialEq)]
@@ -46,6 +50,16 @@ impl IncrByParams {
 /// INCR command executor
 pub struct IncrByCommand;
 
+impl RaftCommand for IncrByCommand {
+    fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError> {
+        let params = IncrByParams::parse(items)?;
+        Ok(Operation::Base(Incr(IncrReq {
+            key: Arc::from(params.key),
+            value: params.increment,
+        })))
+    }
+}
+
 #[async_trait]
 impl Command for IncrByCommand {
     async fn execute(
@@ -54,12 +68,9 @@ impl Command for IncrByCommand {
         items: &[Value],
         server: &RedisServer,
     ) -> Result<Value, CacheCatError> {
-        let params = IncrByParams::parse(items)?;
-        let operation = Incr(IncrReq {
-            key: Arc::from(params.key),
-            value: params.increment,
-        });
-        let value = server.app.write_base(operation, client.db_number).await?;
+        // Parse arguments
+        let operation = self.raft_request(items)?;
+        let value = server.app.write(operation, client.db_number).await?;
         Ok(value)
     }
 }

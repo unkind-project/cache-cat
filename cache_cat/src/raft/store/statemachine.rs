@@ -12,7 +12,7 @@ use crate::raft::types::core::response_value::Value;
 use crate::raft::types::core::value_object::ValueObject;
 use crate::raft::types::entry::bae_operation::{BaseOperation, DelReq, InsertReq, SetReq};
 use crate::raft::types::entry::read_operation::ReadOperation;
-use crate::raft::types::entry::request::{AtomicRequest, RedisOperation, Request};
+use crate::raft::types::entry::request::{AtomicRequest, Operation, RedisOperation, Request};
 use crate::raft::types::file_operator::FileOperator;
 use crate::raft::types::raft_types::{NodeId, TypeConfig};
 use futures::Stream;
@@ -176,11 +176,12 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
         let mut guard;
         let update_type = if raft_meta.snapshot_state == SnapshotState::Start {
             guard = self.data.incremental_operation_queue.lock().await;
-            &mut UpdateType::Snapshot(&mut guard, 0)
+            &mut UpdateType::Snapshot(&mut guard)
         } else {
             &mut UpdateType::None
         };
         let mut update = Update {
+            write_clock: 0,
             db_number: 0,
             update_type,
         };
@@ -197,23 +198,18 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
                 EntryPayload::Normal(req) => {
                     let (time, db_number) = req.split_u64();
                     let write_clock = st.set_write_clock(time);
-                    match update.update_type {
-                        UpdateType::Snapshot(_, count) => {
-                            // 直接修改 count（因为匹配到的 count 是可变的）
-                            *count = write_clock;
-                        }
-                        _ => {}
-                    }
                     update.db_number = db_number;
-                    match req {
-                        Request::Read(_, read) => match read {
+                    update.write_clock = write_clock;
+                    match req.operation {
+                        Operation::Read(read) => match read {
                             ReadOperation::Exists(param) => st.exists(param, update.db_number),
                             ReadOperation::Get(param) => st.get(param, update.db_number),
                             ReadOperation::LRange(param) => st.l_range(param, update.db_number),
                             ReadOperation::MGet(param) => st.m_get(param, update.db_number),
                             ReadOperation::ZRange(param) => st.z_range(param, update.db_number),
+                            ReadOperation::HGet(param) => st.h_get(param, update.db_number),
                         },
-                        Request::Base(_, base) => match base {
+                        Operation::Base(base) => match base {
                             BaseOperation::Empty => Value::ok(),
                             BaseOperation::Set(param) => st.set(param, &mut update),
                             BaseOperation::Expire(param) => st.expire(param, &mut update),
@@ -228,7 +224,7 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
                             BaseOperation::Persist(param) => st.persist(param, &mut update),
                             BaseOperation::Insert(param) => st.insert(param, &mut update),
                         },
-                        Request::Redis(_, redis) => match redis {
+                        Operation::Redis(redis) => match redis {
                             RedisOperation::RedisDel(param) => {
                                 del_hand(st, param, &mut update).await
                             }
@@ -283,6 +279,7 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
             let mut update = Update {
                 db_number: 0,
                 update_type,
+                write_clock: atomic_request.write_clock,
             };
             match atomic_request.request {
                 BaseOperation::Empty => {}

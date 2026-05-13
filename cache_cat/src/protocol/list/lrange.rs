@@ -7,6 +7,10 @@ use crate::utils::lrange;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::protocol::raft_command::RaftCommand;
+use crate::protocol::string::get::{GetCommand, GetParams};
+use crate::raft::types::entry::read_operation::ReadOperation;
+use crate::raft::types::entry::request::Operation;
 
 pub struct LRangeCommand;
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,6 +60,14 @@ fn parse_i64(value: &Value) -> Result<i64, ProtocolError> {
         _ => Err(ProtocolError::NotAnInteger),
     }
 }
+
+impl RaftCommand for LRangeCommand {
+    fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError> {
+        let params = Self::parse_args(items)?;
+        Ok(Operation::Read(ReadOperation::LRange(params)))
+    }
+}
+
 
 #[async_trait]
 impl Command for LRangeCommand {

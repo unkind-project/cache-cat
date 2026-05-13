@@ -202,10 +202,11 @@ impl MyCache {
 
 pub struct Update<'a, 'b> {
     pub db_number: u16,
+    pub write_clock: u64,
     pub update_type: &'b mut UpdateType<'a>,
 }
 pub enum UpdateType<'a> {
     None,
-    Snapshot(&'a mut Vec<AtomicRequest>, u64),
+    Snapshot(&'a mut Vec<AtomicRequest>),
     CAS(u32),
 }

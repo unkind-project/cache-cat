@@ -12,10 +12,13 @@
 
 use crate::error::{CacheCatError, ProtocolError};
 use crate::protocol::command::{Client, Command};
+use crate::protocol::hash::hincrby::HIncrByCommand;
+use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::entry::bae_operation::BaseOperation::Persist;
-use crate::raft::types::entry::bae_operation::PersistReq;
+use crate::raft::types::entry::bae_operation::BaseOperation::{HIncr, Persist};
+use crate::raft::types::entry::bae_operation::{HIncrReq, PersistReq};
+use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -46,6 +49,15 @@ impl PersistParams {
 /// PERSIST command executor
 pub struct PersistCommand;
 
+impl RaftCommand for PersistCommand {
+    fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError> {
+        let params = PersistParams::parse(items)?;
+        Ok(Operation::Base(Persist(PersistReq {
+            key: Arc::from(params.key),
+        })))
+    }
+}
+
 #[async_trait]
 impl Command for PersistCommand {
     async fn execute(
@@ -54,11 +66,8 @@ impl Command for PersistCommand {
         items: &[Value],
         server: &RedisServer,
     ) -> Result<Value, CacheCatError> {
-        let params = PersistParams::parse(items)?;
-        let operation = Persist(PersistReq {
-            key: Arc::from(params.key),
-        });
-        let value = server.app.write_base(operation, client.db_number).await?;
+        let operation = self.raft_request(items)?;
+        let value = server.app.write(operation, client.db_number).await?;
         Ok(value)
     }
 }

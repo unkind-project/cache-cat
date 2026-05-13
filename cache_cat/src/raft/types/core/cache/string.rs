@@ -147,7 +147,7 @@ impl MyCache {
                 cache.insert(set_req.key, value);
                 Value::ok()
             }
-            UpdateType::Snapshot(queue, write_clock) => {
+            UpdateType::Snapshot(queue) => {
                 let key = set_req.key.clone();
                 cache.entry(key).and_upsert_with(|old_entry| {
                     value.version = if let Some(entry) = old_entry {
@@ -158,7 +158,7 @@ impl MyCache {
                     queue.push(AtomicRequest {
                         version: value.version,
                         request: BaseOperation::Set(set_req),
-                        write_clock: *write_clock,
+                        write_clock: update.write_clock,
                     });
                     value
                 });

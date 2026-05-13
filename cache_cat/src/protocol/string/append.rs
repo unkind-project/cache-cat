@@ -2,10 +2,13 @@ use crate::error::{CacheCatError, ProtocolError};
 use crate::protocol::command::{Client, Command};
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::entry::bae_operation::AppendReq;
-use crate::raft::types::entry::bae_operation::BaseOperation::Append;
+use crate::raft::types::entry::bae_operation::{AppendReq, HIncrReq};
+use crate::raft::types::entry::bae_operation::BaseOperation::{Append, HIncr};
 use async_trait::async_trait;
 use std::sync::Arc;
+use crate::protocol::hash::hincrby::HIncrByCommand;
+use crate::protocol::raft_command::RaftCommand;
+use crate::raft::types::entry::request::Operation;
 
 /// Parameters for APPEND command
 #[derive(Debug, Clone, PartialEq)]
@@ -43,6 +46,16 @@ impl AppendParams {
     }
 }
 
+impl RaftCommand for AppendCommand {
+    fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError> {
+        let params = AppendParams::parse(items)?;
+        Ok(Operation::Base(Append(AppendReq {
+            key: Arc::from(params.key),
+            value: Arc::from(params.value),
+        })))
+    }
+}
+
 /// APPEND command executor
 pub struct AppendCommand;
 
@@ -54,12 +67,9 @@ impl Command for AppendCommand {
         items: &[Value],
         server: &RedisServer,
     ) -> Result<Value, CacheCatError> {
-        let params = AppendParams::parse(items)?;
-        let operation = Append(AppendReq {
-            key: Arc::from(params.key),
-            value: Arc::from(params.value),
-        });
-        let value = server.app.write_base(operation, client.db_number).await?;
+        // Parse arguments
+        let operation = self.raft_request(items)?;
+        let value = server.app.write(operation, client.db_number).await?;
         Ok(value)
     }
 }
