@@ -1,29 +1,28 @@
+use crate::error::{CacheCatError, ProtocolError};
 use crate::protocol::raft_command::RaftCommandFactory;
-use crate::raft::store::statemachine::StateMachineStore;
-use crate::raft::types::core::moka::moka::{Database, MyCache, Update};
+use crate::raft::types::core::moka::moka::{MyCache, Update};
 use crate::raft::types::core::moka::request_handler::do_request;
-use crate::raft::types::core::response_value::Value as RaftValue;
+use crate::raft::types::core::response_value::Value;
 use mlua::prelude::LuaError;
-use mlua::{Lua, Value, Variadic};
+use mlua::{Lua, Value as LuaValue, Variadic};
 
-use serde::__private228::de::IdentifierDeserializer;
-
+#[derive(Debug)]
 pub struct LuaEnv {
     lua: Lua,
-    raft_command: RaftCommandFactory, // 直接持有
+    raft_command: RaftCommandFactory,
 }
 
 impl LuaEnv {
-    pub fn new() -> mlua::Result<LuaEnv> {
+    pub fn new() -> Result<LuaEnv, ProtocolError> {
         let lua = Lua::new();
         // 沙箱设置
         let globals = lua.globals();
-        globals.set("os", Value::Nil)?;
-        globals.set("io", Value::Nil)?;
-        globals.set("package", Value::Nil)?;
-        globals.set("require", Value::Nil)?;
-        globals.set("dofile", Value::Nil)?;
-        globals.set("loadfile", Value::Nil)?;
+        globals.set("os", LuaValue::Nil)?;
+        globals.set("io", LuaValue::Nil)?;
+        globals.set("package", LuaValue::Nil)?;
+        globals.set("require", LuaValue::Nil)?;
+        globals.set("dofile", LuaValue::Nil)?;
+        globals.set("loadfile", LuaValue::Nil)?;
 
         Ok(LuaEnv {
             lua,
@@ -31,9 +30,13 @@ impl LuaEnv {
         })
     }
 
-    pub fn exec_lua(&self, cache: &MyCache, cmd: &str, update: &mut Update) -> mlua::Result<Value> {
-        // scope 允许借用一个 &mut update
-        self.lua.scope(|scope| -> mlua::Result<Value> {
+    pub fn exec_lua(
+        &self,
+        cache: &MyCache,
+        cmd: &str,
+        update: &mut Update,
+    ) -> Result<Value, ProtocolError> {
+        let res = self.lua.scope(|scope| -> mlua::Result<LuaValue> {
             // 创建临时的 redis.call 闭包，可以捕获 &mut update 和 &self.raft_command
             let redis_call = scope.create_function_mut(|lua_ctx, args: Variadic<String>| {
                 if args.is_empty() {
@@ -44,7 +47,7 @@ impl LuaEnv {
                 // 1. 构建参数
                 let mut vec = Vec::new();
                 for param in args {
-                    vec.push(RaftValue::SimpleString(param));
+                    vec.push(Value::SimpleString(param));
                 }
 
                 // 2. 解析命令
@@ -53,14 +56,8 @@ impl LuaEnv {
                     .parse_request(&vec)
                     .map_err(|e| LuaError::external(e))?;
                 let value = do_request(cache, operation, update);
-                let str = match value {
-                    RaftValue::BulkString(value) => {
-                        String::from_utf8_lossy(&*value.unwrap()).to_string()
-                    }
-                    RaftValue::SimpleString(value) => value,
-                    _ => String::from(""),
-                };
-                Ok(str) // 按需要返回值
+                let result = value.into_lua_value(&self.lua)?;
+                Ok(result) // 按需要返回值
             })?;
 
             // 注入临时的 redis 表
@@ -70,6 +67,7 @@ impl LuaEnv {
 
             // 执行脚本
             self.lua.load(cmd).eval()
-        })
+        });
+        Value::from_lua(res?, &self.lua)
     }
 }

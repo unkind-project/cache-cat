@@ -22,15 +22,23 @@ use crate::protocol::zset::zrange::ZRangeCommand;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::request::Operation;
 use std::collections::HashMap;
+use std::fmt;
 use tracing::warn;
-
-pub trait RaftCommand {
+pub trait RaftCommand: Send + Sync {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError>;
 }
 
 /// Command factory for creating and executing commands
+///
 pub struct RaftCommandFactory {
     commands: HashMap<String, Box<dyn RaftCommand>>,
+}
+impl fmt::Debug for RaftCommandFactory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RaftCommandFactory")
+            .field("commands", &self.commands.keys().collect::<Vec<_>>())
+            .finish()
+    }
 }
 
 impl RaftCommandFactory {

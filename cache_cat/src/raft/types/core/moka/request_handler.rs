@@ -1,10 +1,8 @@
-use crate::protocol::lua_env::LuaEnv;
 use crate::raft::types::core::moka::moka::{MyCache, Update};
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::raft::types::entry::read_operation::ReadOperation;
 use crate::raft::types::entry::request::{Operation, RedisOperation};
-use mlua::Value as LuaValue;
 
 #[inline]
 pub fn do_request(my_cache: &MyCache, operation: Operation, update: &mut Update) -> Value {
@@ -37,12 +35,10 @@ pub fn do_request(my_cache: &MyCache, operation: Operation, update: &mut Update)
             RedisOperation::RedisSet(param) => my_cache.redis_set(param, update),
             RedisOperation::RedisMset(param) => my_cache.redis_mset(param, update),
             RedisOperation::RedisRename(param) => my_cache.redis_rename(param, update),
-            RedisOperation::RedisEval(param) => {
-                let env = LuaEnv::new().unwrap();
-                let value = env.exec_lua(my_cache, &*param.script, update).unwrap();
-                let result = value.to_string().unwrap();
-                Value::SimpleString(result)
-            }
+            RedisOperation::RedisEval(param) => my_cache
+                .lua_env
+                .exec_lua(my_cache, &*param.script, update)
+                .unwrap_or_else(|err| err.into()),
         },
     }
 }

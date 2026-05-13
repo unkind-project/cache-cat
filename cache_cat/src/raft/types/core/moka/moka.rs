@@ -1,4 +1,5 @@
 use crate::error::ProtocolError;
+use crate::protocol::lua_env::LuaEnv;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::core::value_object::ValueObject;
 use crate::raft::types::entry::request::AtomicRequest;
@@ -8,7 +9,6 @@ use moka::sync::Cache;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::cmp::max;
-use std::collections::HashMap;
 use std::option::Option;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -78,8 +78,9 @@ impl Clone for Database {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct MyCache {
+    pub lua_env: LuaEnv,
     // 在固定间隔内是否发生过删除操作
     pub have_deleted: Arc<AtomicBool>,
 
@@ -130,7 +131,7 @@ impl MyCache {
     }
 
     /// 创建 MyCache 时自动初始化内部 Cache
-    pub fn new(db_number: u16) -> Self {
+    pub fn new(db_number: u16) -> Result<Self, ProtocolError> {
         let have_deleted = Arc::new(AtomicBool::new(false));
         let write_logic_clock = Arc::new(AtomicU64::new(0));
         let deleted = have_deleted.clone();
@@ -151,14 +152,16 @@ impl MyCache {
             let db = Database { cache };
             vec.push(db);
         }
-        Self {
+        let lua_env = LuaEnv::new()?;
+        Ok(Self {
+            lua_env,
             have_deleted,
             read_logic_clock: Arc::new(AtomicU64::new(0)),
             write_logic_clock,
             databases: vec,
             write_lock: Arc::new(Default::default()),
             read_lock: Arc::new(Default::default()),
-        }
+        })
     }
 
     #[inline]

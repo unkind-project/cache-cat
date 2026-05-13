@@ -21,3 +21,14 @@ return value
 # 执行脚本
 result = r.eval(lua_script, 0)
 print(f"GET 结果: {result}")
+
+r.lpush('keyList', '1')
+
+lua_script = """
+redis.call('LPUSH','keyList', '2')
+local value = redis.call('LRANGE', 'keyList', 0, -1)
+return value
+"""
+
+result = r.eval(lua_script, 0)
+print(f"GET 结果: {result}")

@@ -1,3 +1,4 @@
+use crate::error::CacheCatError;
 use crate::node::parsed_config::ParsedConfig;
 use crate::protocol::string::set::{SetMode, SetParams};
 use crate::raft::store::snapshot::snapshot_handler::{
@@ -60,7 +61,7 @@ pub struct StateMachineStore {
 #[derive(Debug, Clone)]
 pub struct StateMachineData {
     /// State built from applying the raft logs
-    pub kvs: MyCache,
+    pub kvs: Arc<MyCache>,
     //增量日志队列
     pub incremental_operation_queue: Arc<Mutex<Vec<AtomicRequest>>>,
 
@@ -114,9 +115,9 @@ impl StateMachineStore {
         config: ParsedConfig,
         path: PathBuf,
         node_id: NodeId,
-    ) -> Result<StateMachineStore, io::Error> {
+    ) -> Result<StateMachineStore, CacheCatError> {
         let (tx, _) = broadcast::channel::<()>(2);
-        let cache = MyCache::new(config.db_number);
+        let cache = Arc::new(MyCache::new(config.db_number)?);
         let mut sm = Self {
             data: StateMachineData {
                 snapshot_message: tx,
