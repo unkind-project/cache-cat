@@ -1,4 +1,4 @@
-use crate::error::CacheCatError;
+use crate::error::{CacheCatError, ProtocolError};
 use crate::node::parsed_config::ParsedConfig;
 use crate::protocol::string::set::{SetMode, SetParams};
 use crate::raft::store::snapshot::snapshot_handler::{
@@ -197,7 +197,8 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
                     let write_clock = st.set_write_clock(time);
                     update.db_number = db_number;
                     update.write_clock = write_clock;
-                    do_request(&self.data.kvs, req.operation, &mut update)
+                    let value = do_request(&self.data.kvs, req.operation, &mut update);
+                    value
                 }
                 EntryPayload::Membership(mem) => {
                     raft_meta.last_membership =

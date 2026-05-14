@@ -37,7 +37,7 @@ pub fn do_request(my_cache: &MyCache, operation: Operation, update: &mut Update)
             RedisOperation::RedisRename(param) => my_cache.redis_rename(param, update),
             RedisOperation::RedisEval(param) => my_cache
                 .lua_env
-                .exec_lua(my_cache, &*param.script, update)
+                .exec_lua(my_cache, &*param.script, &param.keys, &param.args, update)
                 .unwrap_or_else(|err| err.into()),
         },
     }

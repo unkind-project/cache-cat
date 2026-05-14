@@ -215,7 +215,7 @@ impl From<LuaError> for ProtocolError {
             LuaError::RuntimeError(message) => ProtocolError::ScriptError("f_script", message),
             LuaError::MemoryError(message) => ProtocolError::ScriptError("unknown", message),
             // ... 其他 Lua 错误类型
-            _ => ProtocolError::ScriptError("unknown", err.to_string()),
+            _ => ProtocolError::ScriptError("unknown", err.to_string().replace('\n', " ")),
         }
     }
 }
