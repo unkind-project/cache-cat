@@ -1,6 +1,7 @@
 use crate::protocol::key::del::DelParams;
 use crate::protocol::key::rename::RenameParams;
 use crate::protocol::lua::eval::EvalParams;
+use crate::protocol::lua::script::ScriptParam;
 use crate::protocol::string::mset::MsetParams;
 use crate::protocol::string::set::SetParams;
 use crate::protocol::transaction::exec::ExecParams;
@@ -59,6 +60,7 @@ pub enum RedisOperation {
     RedisRename(RenameParams),
     RedisEval(EvalParams),
     RedisExec(ExecParams),
+    RedisScript(ScriptParam),
 }
 
 impl fmt::Display for Request {
@@ -96,6 +98,7 @@ impl fmt::Display for Request {
                 RedisOperation::RedisRename(req) => write!(f, "RedisRename: {}", req),
                 RedisOperation::RedisEval(req) => write!(f, "RedisEval: {}", req),
                 RedisOperation::RedisExec(req) => write!(f, "RedisExec: {}", req),
+                RedisOperation::RedisScript(req) => write!(f, "RedisScript: {}", req),
             },
         }
     }

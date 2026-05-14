@@ -83,9 +83,7 @@ impl EvalParams {
         // Actual remaining items after script and numkeys: items.len() - 3
         let remaining = items.len() - 3;
         if remaining < numkeys {
-            return Err(ProtocolError::InvalidArgument(
-                "not enough keys specified",
-            ));
+            return Err(ProtocolError::InvalidArgument("not enough keys specified"));
         }
 
         // Parse keys
@@ -139,11 +137,8 @@ impl Command for EvalCommand {
             vec.push(self.raft_request(items)?);
             return Ok(Value::SimpleString(String::from("QUEUED")));
         }
-        let params = EvalParams::parse(items)?;
-        let result = server
-            .app
-            .write(Operation::Redis(RedisEval(params)), client.db_number)
-            .await?;
+        let operation = self.raft_request(items)?;
+        let result = server.app.write(operation, client.db_number).await?;
         Ok(result)
     }
 }
