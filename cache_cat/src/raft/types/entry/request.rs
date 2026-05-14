@@ -71,6 +71,7 @@ impl fmt::Display for Request {
                 ReadOperation::Exists(req) => write!(f, "Exists: {}", req),
                 ReadOperation::LRange(req) => write!(f, "LRange: {}", req),
                 ReadOperation::HGet(req) => write!(f, "HGet: {}", req),
+                ReadOperation::SMembers(req) => write!(f, "SMembers: {}", req),
             },
             Operation::Base(op) => match op {
                 BaseOperation::Empty => write!(f, "None"),

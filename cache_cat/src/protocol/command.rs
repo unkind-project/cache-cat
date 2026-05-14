@@ -16,6 +16,7 @@ use crate::protocol::list::lpush::LPushCommand;
 use crate::protocol::list::lrange::LRangeCommand;
 use crate::protocol::lua::eval::EvalCommand;
 use crate::protocol::set::sadd::SAddCommand;
+use crate::protocol::set::smembers::SMembersCommand;
 use crate::protocol::string::append::AppendCommand;
 use crate::protocol::string::get::GetCommand;
 use crate::protocol::string::incr::IncrCommand;
@@ -23,6 +24,7 @@ use crate::protocol::string::incrby::IncrByCommand;
 use crate::protocol::string::mget::MgetCommand;
 use crate::protocol::string::mset::MsetCommand;
 use crate::protocol::string::set::SetCommand;
+use crate::protocol::transaction::exec::ExecCommand;
 use crate::protocol::transaction::multi::MultiCommand;
 use crate::protocol::zset::zadd::ZAddCommand;
 use crate::protocol::zset::zrange::ZRangeCommand;
@@ -32,7 +34,6 @@ use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use tracing::warn;
-use crate::protocol::transaction::exec::ExecCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -102,7 +103,7 @@ impl CommandFactory {
         factory.register("EVAL", EvalCommand);
         factory.register("MULTI", MultiCommand);
         factory.register("EXEC", ExecCommand);
-
+        factory.register("SMEMBERS", SMembersCommand);
         factory
     }
 

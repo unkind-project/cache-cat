@@ -25,6 +25,7 @@ use crate::raft::types::entry::request::Operation;
 use std::collections::HashMap;
 use std::fmt;
 use tracing::warn;
+use crate::protocol::set::smembers::SMembersCommand;
 
 pub trait RaftCommand: Send + Sync {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError>;
@@ -80,7 +81,8 @@ impl RaftCommandFactory {
         factory.register("EXISTS", ExistsCommand);
         factory.register("PERSIST", PersistCommand);
         factory.register("RENAME", RenameCommand);
-        // factory.register("EVAL", EvalCommand);   //禁止套娃
+        factory.register("SMEMBERS", SMembersCommand);
+        factory.register("EVAL", EvalCommand);   //禁止套娃
         factory
     }
 

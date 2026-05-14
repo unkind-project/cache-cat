@@ -14,6 +14,8 @@ pub fn do_request(my_cache: &MyCache, operation: Operation, update: &mut Update)
             ReadOperation::MGet(param) => my_cache.m_get(param, update.db_number),
             ReadOperation::ZRange(param) => my_cache.z_range(param, update.db_number),
             ReadOperation::HGet(param) => my_cache.h_get(param, update.db_number),
+            ReadOperation::SMembers(param)=> my_cache.s_member(param, update.db_number),
+
         },
         Operation::Base(base) => match base {
             BaseOperation::Empty => Value::ok(),

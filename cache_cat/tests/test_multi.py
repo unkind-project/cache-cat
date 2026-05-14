@@ -20,6 +20,13 @@ pipe.incr('age')  # age 变为 26
 pipe.get('name')
 pipe.get('age')
 
+lua_script = """
+-- 尝试在 Lua 脚本中调用 EVAL（会报错）
+local result = redis.call('EVAL', "return redis.call('GET','name')", 0)
+return result
+"""
+pipe.eval(lua_script, 0)
+
 # 执行事务
 result = pipe.execute()
 
@@ -27,4 +34,6 @@ result = pipe.execute()
 print(result)
 # 或者逐行输出
 for i, res in enumerate(result):
-    print(f"命令 {i+1} 的结果: {res}")
+    print(f"命令 {i + 1} 的结果: {res}")
+
+
