@@ -1,5 +1,6 @@
-use crate::error::ProtocolError;
+use crate::error::{CacheCatError, ProtocolError};
 use crate::protocol::hash::hget::HGetParams;
+use crate::protocol::hash::hmget::HMGetParams;
 use crate::raft::types::core::moka::cas::ComputeCommand;
 use crate::raft::types::core::moka::moka::{MyCache, MyValue, Update};
 use crate::raft::types::core::response_value::Value;
@@ -112,6 +113,37 @@ impl ComputeCommand for HIncrReq {
 }
 
 impl MyCache {
+    pub fn h_m_get(&self, param: HMGetParams, db_number: u16) -> Value {
+        let cache = match self.get_cache(db_number) {
+            Err(err) => return err,
+            Ok(cache) => cache,
+        };
+        match cache.get(&param.key) {
+            None => Value::BulkString(None),
+            Some(v) => match v.data {
+                ValueObject::Hash(map) => {
+                    let guard = map.lock();
+                    let results: Vec<Value> = param
+                        .fields
+                        .iter()
+                        .map(|field| match guard.get(field) {
+                            None => Value::BulkString(None),
+                            Some(value) => match value {
+                                HashValue::Str(str) => {
+                                    Value::BulkString(Some(str.as_ref().clone()))
+                                }
+                                HashValue::Int(int) => {
+                                    Value::BulkString(Some(int.to_string().as_bytes().to_vec()))
+                                }
+                            },
+                        })
+                        .collect();
+                    Value::Array(Some(results))
+                }
+                _ => ProtocolError::WrongType.into(),
+            },
+        }
+    }
     pub fn h_get(&self, param: HGetParams, db_number: u16) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
@@ -124,11 +156,11 @@ impl MyCache {
                     let guard = map.lock();
                     let option = guard.get(&param.field);
                     match option {
-                        None => Value::BulkString(None) ,
+                        None => Value::BulkString(None),
                         Some(value) => match value {
-                            HashValue::Str(str) => Value::BulkString(Some(str.as_ref().clone())) ,
+                            HashValue::Str(str) => Value::BulkString(Some(str.as_ref().clone())),
                             HashValue::Int(int) => {
-                                Value::BulkString(Some(int.to_string().as_bytes().to_vec())) 
+                                Value::BulkString(Some(int.to_string().as_bytes().to_vec()))
                             }
                         },
                     }

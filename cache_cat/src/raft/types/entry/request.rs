@@ -3,12 +3,12 @@ use crate::protocol::key::rename::RenameParams;
 use crate::protocol::lua::eval::EvalParams;
 use crate::protocol::string::mset::MsetParams;
 use crate::protocol::string::set::SetParams;
+use crate::protocol::transaction::exec::ExecParams;
 use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::raft::types::entry::read_operation::ReadOperation;
 use crate::utils::merge_u64;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use crate::protocol::transaction::exec::ExecParams;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Operation {
@@ -72,6 +72,7 @@ impl fmt::Display for Request {
                 ReadOperation::LRange(req) => write!(f, "LRange: {}", req),
                 ReadOperation::HGet(req) => write!(f, "HGet: {}", req),
                 ReadOperation::SMembers(req) => write!(f, "SMembers: {}", req),
+                ReadOperation::HMGet(req) => write!(f, "HMGet: {}", req),
             },
             Operation::Base(op) => match op {
                 BaseOperation::Empty => write!(f, "None"),

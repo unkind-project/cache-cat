@@ -34,6 +34,7 @@ use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use tracing::warn;
+use crate::protocol::hash::hmget::{HMGetCommand, HMGetParams};
 use crate::protocol::transaction::discard::DiscardCommand;
 
 #[async_trait]
@@ -106,6 +107,7 @@ impl CommandFactory {
         factory.register("DISCARD", DiscardCommand);
         factory.register("EXEC", ExecCommand);
         factory.register("SMEMBERS", SMembersCommand);
+        factory.register("HMGET", HMGetCommand);
         factory
     }
 

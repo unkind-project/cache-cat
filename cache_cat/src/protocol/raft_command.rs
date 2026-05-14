@@ -1,6 +1,7 @@
 use crate::error::ProtocolError;
 use crate::protocol::hash::hget::HGetCommand;
 use crate::protocol::hash::hincrby::HIncrByCommand;
+use crate::protocol::hash::hmget::HMGetCommand;
 use crate::protocol::hash::hset::HSetCommand;
 use crate::protocol::key::del::DelCommand;
 use crate::protocol::key::exists::ExistsCommand;
@@ -11,6 +12,7 @@ use crate::protocol::list::lpush::LPushCommand;
 use crate::protocol::list::lrange::LRangeCommand;
 use crate::protocol::lua::eval::EvalCommand;
 use crate::protocol::set::sadd::SAddCommand;
+use crate::protocol::set::smembers::SMembersCommand;
 use crate::protocol::string::append::AppendCommand;
 use crate::protocol::string::get::GetCommand;
 use crate::protocol::string::incr::IncrCommand;
@@ -25,7 +27,6 @@ use crate::raft::types::entry::request::Operation;
 use std::collections::HashMap;
 use std::fmt;
 use tracing::warn;
-use crate::protocol::set::smembers::SMembersCommand;
 
 pub trait RaftCommand: Send + Sync {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError>;
@@ -82,7 +83,8 @@ impl RaftCommandFactory {
         factory.register("PERSIST", PersistCommand);
         factory.register("RENAME", RenameCommand);
         factory.register("SMEMBERS", SMembersCommand);
-        factory.register("EVAL", EvalCommand);   //禁止套娃
+        factory.register("HMGET", HMGetCommand);
+        factory.register("EVAL", EvalCommand); //禁止套娃
         factory
     }
 

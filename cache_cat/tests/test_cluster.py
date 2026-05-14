@@ -45,3 +45,7 @@ print(r.echo('test13'))
 
 r.sadd('test14', 'test')
 print(r.smembers('test14'))
+
+
+r.hset('test15', 'test', 'test')
+r.hmget('test15', ['test'])
