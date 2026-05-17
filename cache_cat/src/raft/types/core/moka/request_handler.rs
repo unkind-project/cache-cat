@@ -36,6 +36,7 @@ pub fn do_request(
             BaseOperation::SAdd(param) => my_cache.s_add(param, update),
             BaseOperation::Persist(param) => my_cache.persist(param, update),
             BaseOperation::Insert(param) => my_cache.insert(param, update),
+            BaseOperation::HDel(param) => my_cache.h_del(param, update),
         },
         Operation::Redis(redis) => match redis {
             RedisOperation::RedisDel(param) => my_cache.redis_del(param, update, external),

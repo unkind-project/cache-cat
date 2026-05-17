@@ -11,7 +11,6 @@ use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-// 使用 lru crate
 
 /// LRU 缓存容量
 const SCRIPT_CACHE_CAPACITY: usize = 500;

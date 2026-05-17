@@ -4,6 +4,7 @@ use crate::protocol::connection::echo::EchoCommand;
 use crate::protocol::connection::ping::PingCommand;
 use crate::protocol::connection::save::SaveCommand;
 use crate::protocol::connection::select::SelectCommand;
+use crate::protocol::hash::hdel::HDelCommand;
 use crate::protocol::hash::hget::HGetCommand;
 use crate::protocol::hash::hincrby::HIncrByCommand;
 use crate::protocol::hash::hmget::{HMGetCommand, HMGetParams};
@@ -16,6 +17,7 @@ use crate::protocol::key::rename::RenameCommand;
 use crate::protocol::list::lpush::LPushCommand;
 use crate::protocol::list::lrange::LRangeCommand;
 use crate::protocol::lua::eval::EvalCommand;
+use crate::protocol::lua::evalsha::EvalShaCommand;
 use crate::protocol::lua::script::{ScriptCommand, ScriptParam};
 use crate::protocol::set::sadd::SAddCommand;
 use crate::protocol::set::smembers::SMembersCommand;
@@ -37,7 +39,6 @@ use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use tracing::warn;
-use crate::protocol::lua::evalsha::EvalShaCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -112,6 +113,8 @@ impl CommandFactory {
         factory.register("HMGET", HMGetCommand);
         factory.register("SCRIPT", ScriptCommand);
         factory.register("EVALSHA", EvalShaCommand);
+        factory.register("HDEL", HDelCommand);
+
         factory
     }
 

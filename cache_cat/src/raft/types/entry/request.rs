@@ -89,6 +89,7 @@ impl fmt::Display for Request {
                 BaseOperation::HIncr(req) => write!(f, "HIncr: {}", req),
                 BaseOperation::Persist(req) => write!(f, "Persist: {}", req),
                 BaseOperation::Insert(insert) => write!(f, "Insert: {}", insert),
+                BaseOperation::HDel(req) => write!(f, "HDel: {}", req),
             },
             Operation::Redis(op) => match op {
                 RedisOperation::RedisSet(req) => write!(f, "RedisSet: {}", req),
