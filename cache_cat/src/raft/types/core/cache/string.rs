@@ -1,5 +1,5 @@
 use crate::error::ProtocolError;
-use crate::mocha::{EntryRef, ExpirePolicy, MochaOperation};
+use crate::mocha::{ EntrySnapshot, ExpirePolicy, MochaOperation};
 use crate::protocol::NO_EXPIRATION;
 use crate::protocol::string::get::GetParams;
 use crate::protocol::string::mget::MgetParams;
@@ -24,7 +24,7 @@ impl ComputeCommand for SetReq {
 
     fn mutate(
         self,
-        entry: EntryRef<MyValue>,
+        entry: EntrySnapshot<MyValue>,
         _write_clock: u64,
     ) -> (MochaOperation<MyValue>, Value) {
         let new_version = entry.value.version + 1;
@@ -76,7 +76,7 @@ impl ComputeCommand for IncrReq {
 
     fn mutate(
         self,
-        entry: EntryRef<MyValue>,
+        entry: EntrySnapshot<MyValue>,
         write_clock: u64,
     ) -> (MochaOperation<MyValue>, Value) {
         let (result, value) = match &entry.value.data {
@@ -134,7 +134,7 @@ impl ComputeCommand for AppendReq {
 
     fn mutate(
         self,
-        entry: EntryRef<MyValue>,
+        entry: EntrySnapshot<MyValue>,
         write_clock: u64,
     ) -> (MochaOperation<MyValue>, Value) {
         match &entry.value.data {

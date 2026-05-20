@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
 use std::time::Duration;
-use tokio::task::JoinHandle;
+
 
 const WHEEL_BITS: usize = 8;
 const WHEEL_SIZE: usize = 1 << WHEEL_BITS;
@@ -35,13 +35,7 @@ pub struct EntrySnapshot<V> {
     pub expire_at: Option<u64>,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct EntryRef<'a, V> {
-    pub value: &'a V,
-    pub expire_at: Option<u64>,
-}
-
-impl<'a, V> EntryRef<'a, V> {
+impl<V> EntrySnapshot<V> {
     pub fn get_expire_policy(&self) -> ExpirePolicy {
         match self.expire_at {
             None => ExpirePolicy::Persistent,
@@ -280,7 +274,7 @@ where
         }
     }
 
-    fn write_entry(&self, key: K, value: V, policy: ExpirePolicy) -> EntrySnapshot<V> {
+    pub fn insert_entry(&self, key: K, value: V, policy: ExpirePolicy) -> EntrySnapshot<V> {
         let new_entry = self.make_entry(value, policy);
         let snapshot = new_entry.snapshot();
         let expire_at = new_entry.expire_at;
@@ -320,19 +314,19 @@ where
             Some(at) => ExpirePolicy::Absolute(at),
         };
 
-        self.write_entry(key, snapshot.value, policy)
+        self.insert_entry(key, snapshot.value, policy)
     }
 
     pub fn insert(&self, key: K, value: V, ttl: u64) -> EntrySnapshot<V> {
-        self.write_entry(key, value, ExpirePolicy::Ttl(ttl))
+        self.insert_entry(key, value, ExpirePolicy::Ttl(ttl))
     }
 
     pub fn insert_absolute(&self, key: K, value: V, expire_at: u64) -> EntrySnapshot<V> {
-        self.write_entry(key, value, ExpirePolicy::Absolute(expire_at))
+        self.insert_entry(key, value, ExpirePolicy::Absolute(expire_at))
     }
 
     pub fn insert_persistent(&self, key: K, value: V) -> EntrySnapshot<V> {
-        self.write_entry(key, value, ExpirePolicy::Persistent)
+        self.insert_entry(key, value, ExpirePolicy::Persistent)
     }
 
     pub fn get_entry<Q>(&self, key: &Q) -> Option<EntrySnapshot<V>>
@@ -492,116 +486,6 @@ where
         }
     }
 
-    pub fn compute<F>(&self, key: K, f: F) -> MochaCompute<K, V>
-    where
-        F: for<'a> FnOnce(Option<EntryRef<'a, V>>) -> MochaOperation<V>,
-    {
-        let now = self.now_logical();
-        let mut f_holder = Some(f);
-        let mut result = None;
-        let mut new_expire_at = None;
-
-        {
-            let mg = self.map.pin();
-
-            mg.compute_if_present(&key, |k, entry| {
-                if entry.expire_at.is_some_and(|at| now >= at) {
-                    return None;
-                }
-
-                let user_f = f_holder
-                    .take()
-                    .expect("compute closure must be invoked at most once");
-
-                let old_snapshot = entry.snapshot();
-
-                match user_f(Some(EntryRef {
-                    value: &entry.value,
-                    expire_at: entry.expire_at,
-                })) {
-                    MochaOperation::Insert { value, expire } => {
-                        let new_entry = self.make_entry(value, expire);
-                        let new_snapshot = new_entry.snapshot();
-
-                        new_expire_at = new_entry.expire_at;
-
-                        result = Some(MochaCompute::Updated {
-                            old: (k.clone(), old_snapshot),
-                            new: (k.clone(), new_snapshot),
-                        });
-
-                        Some(new_entry)
-                    }
-                    MochaOperation::Remove => {
-                        result = Some(MochaCompute::Removed(k.clone(), old_snapshot));
-                        None
-                    }
-                    MochaOperation::Abort => {
-                        result = Some(MochaCompute::Unchanged);
-                        Some(entry.clone())
-                    }
-                }
-            });
-        }
-
-        if let Some(user_f) = f_holder.take() {
-            match user_f(None) {
-                MochaOperation::Insert { value, expire } => {
-                    let new_entry = self.make_entry(value, expire);
-                    let new_snapshot = new_entry.snapshot();
-                    let expire_at = new_entry.expire_at;
-
-                    let inserted = {
-                        let mg = self.map.pin();
-                        mg.try_insert(key.clone(), new_entry).is_ok()
-                    };
-
-                    if inserted {
-                        self.enqueue_expiry(key.clone(), expire_at);
-                        return MochaCompute::Inserted(key, new_snapshot);
-                    }
-
-                    return MochaCompute::Unchanged;
-                }
-                MochaOperation::Remove | MochaOperation::Abort => {
-                    return MochaCompute::Unchanged;
-                }
-            }
-        }
-
-        if let Some(result) = result {
-            if matches!(result, MochaCompute::Updated { .. }) {
-                self.enqueue_expiry(key, new_expire_at);
-            }
-
-            result
-        } else {
-            MochaCompute::Unchanged
-        }
-    }
-
-    pub fn for_each<F>(&self, mut f: F)
-    where
-        F: FnMut(&K, EntryRef<'_, V>),
-    {
-        let guard = self.map.guard();
-        let now = self.now_logical();
-
-        for (k, entry) in self.map.iter(&guard) {
-            if entry.expire_at.is_some_and(|at| now >= at) {
-                continue;
-            }
-
-            f(
-                k,
-                EntryRef {
-                    value: &entry.value,
-                    expire_at: entry.expire_at,
-                },
-            );
-        }
-    }
-
     fn spawn_active_expirer(
         self: Arc<Self>,
         expire_rx: Receiver<ExpireCommand<K>>,
@@ -712,30 +596,7 @@ where
         self.map.guard()
     }
 
-    pub fn iter<'g>(
-        &'g self,
-        guard: &'g Guard<'_>,
-    ) -> impl Iterator<Item = (&'g K, EntryRef<'g, V>)> + 'g {
-        let now = self.now_logical();
 
-        self.map.iter(guard).filter_map(move |(k, entry)| {
-            if entry.expire_at.is_some_and(|at| now >= at) {
-                None
-            } else {
-                Some((
-                    k,
-                    EntryRef {
-                        value: &entry.value,
-                        expire_at: entry.expire_at,
-                    },
-                ))
-            }
-        })
-    }
-
-    pub fn keys<'g>(&'g self, guard: &'g Guard<'_>) -> impl Iterator<Item = &'g K> + 'g {
-        self.iter(guard).map(|(k, _)| k)
-    }
 
     pub fn iter_snapshots<'g>(
         &'g self,
