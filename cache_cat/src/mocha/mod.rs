@@ -1,7 +1,7 @@
 mod test;
 
 use crossbeam_channel::{Receiver, Sender, after, bounded, select, unbounded};
-use flurry::{Guard, HashMap};
+use papaya::{Compute, Equivalent, Guard, HashMap, LocalGuard, Operation};
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
 use std::hash::Hash;
@@ -10,17 +10,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
 use std::time::Duration;
 
-
 const WHEEL_BITS: usize = 8;
 const WHEEL_SIZE: usize = 1 << WHEEL_BITS;
 const WHEEL_MASK: u64 = (WHEEL_SIZE as u64) - 1;
 const WHEEL_LEVELS: usize = 8;
 const LARGE_ADVANCE_THRESHOLD: u64 = 4096;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Expiry {
-    pub at: u64,
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ExpirePolicy {
@@ -290,22 +284,16 @@ where
 
     fn remove_expired_if_current(&self, key: K, expire_at: u64) -> bool {
         let now = self.now_logical();
-        let mut removed = false;
-
-        {
-            let mg = self.map.pin();
-
-            mg.compute_if_present(&key, |_, entry| {
-                if entry.expire_at == Some(expire_at) && now >= expire_at {
-                    removed = true;
-                    None
-                } else {
-                    Some(entry.clone())
+        let mg = self.map.pin();
+        matches!(
+            mg.compute(key, |entry| match entry {
+                Some((_, entry)) if entry.expire_at == Some(expire_at) && now >= expire_at => {
+                    Operation::Remove
                 }
-            });
-        }
-
-        removed
+                _ => Operation::Abort(()),
+            }),
+            Compute::Removed(_, _)
+        )
     }
 
     pub fn insert_snapshot(&self, key: K, snapshot: EntrySnapshot<V>) -> EntrySnapshot<V> {
@@ -331,26 +319,22 @@ where
 
     pub fn get_entry<Q>(&self, key: &Q) -> Option<EntrySnapshot<V>>
     where
-        K: Borrow<Q>,
-        Q: ?Sized + Hash + Ord,
+        Q: ?Sized + Hash + Equivalent<K>,
     {
         let now = self.now_logical();
         let mg = self.map.pin();
-        // 1. 先读
-        let expired_at = match mg.get(key) {
-            Some(entry) => match entry.expire_at {
-                Some(at) if now >= at => at,
+        let (expired_key, expired_at) = match mg.get_key_value(key) {
+            Some((stored_key, entry)) => match entry.expire_at {
+                Some(at) if now >= at => (stored_key.clone(), at),
                 _ => return Some(entry.snapshot()),
             },
             None => return None,
         };
-        // 2. 只有过期才走 compute_if_present 做惰性删除
-        mg.compute_if_present(key, |_, entry| {
-            if entry.expire_at == Some(expired_at) && now >= expired_at {
-                None
-            } else {
-                Some(entry.clone())
+        mg.compute(expired_key, |entry| match entry {
+            Some((_, entry)) if entry.expire_at == Some(expired_at) && now >= expired_at => {
+                Operation::Remove
             }
+            _ => Operation::Abort(()),
         });
         None
     }
@@ -384,30 +368,19 @@ where
 
     fn set_expire_policy(&self, key: &K, policy: ExpirePolicy) -> Option<EntrySnapshot<V>> {
         let now = self.now_logical();
-        let mut snapshot = None;
-        let mut new_expire_at = None;
-
-        {
-            let mg = self.map.pin();
-
-            mg.compute_if_present(key, |_, entry| {
-                if entry.expire_at.is_some_and(|at| now >= at) {
-                    None
-                } else {
-                    let new_entry = self.make_entry(entry.value.clone(), policy);
-
-                    snapshot = Some(new_entry.snapshot());
-                    new_expire_at = new_entry.expire_at;
-
-                    Some(new_entry)
-                }
-            });
+        let mg = self.map.pin();
+        let result = mg.compute(key.clone(), |entry| match entry {
+            Some((_, entry)) if entry.expire_at.is_some_and(|at| now >= at) => Operation::Remove,
+            Some((_, entry)) => Operation::Insert(self.make_entry(entry.value.clone(), policy)),
+            None => Operation::Abort(()),
+        });
+        let snapshot = match result {
+            Compute::Updated { new: (_, entry), .. } => Some(entry.snapshot()),
+            _ => None,
+        };
+        if let Some(snapshot) = &snapshot {
+            self.enqueue_expiry(key.clone(), snapshot.expire_at);
         }
-
-        if snapshot.is_some() {
-            self.enqueue_expiry(key.clone(), new_expire_at);
-        }
-
         snapshot
     }
 
@@ -429,62 +402,6 @@ where
         }
     }
 
-    pub fn update_or_insert_with<U, F>(
-        &self,
-        key: K,
-        update: U,
-        insert: F,
-        expire: ExpirePolicy,
-    ) -> EntrySnapshot<V>
-    where
-        U: Fn(&V) -> V,
-        F: Fn() -> V,
-    {
-        loop {
-            let now = self.now_logical();
-            let mut snapshot = None;
-            let mut new_expire_at = None;
-
-            {
-                let mg = self.map.pin();
-
-                let touched = mg
-                    .compute_if_present(&key, |_, entry| {
-                        let expired = entry.expire_at.is_some_and(|at| now >= at);
-
-                        let value = if expired {
-                            insert()
-                        } else {
-                            update(&entry.value)
-                        };
-
-                        let new_entry = self.make_entry(value, expire);
-
-                        snapshot = Some(new_entry.snapshot());
-                        new_expire_at = new_entry.expire_at;
-
-                        Some(new_entry)
-                    })
-                    .is_some();
-
-                if touched {
-                    drop(mg);
-                    self.enqueue_expiry(key, new_expire_at);
-                    return snapshot.unwrap();
-                }
-
-                let new_entry = self.make_entry(insert(), expire);
-                let snap = new_entry.snapshot();
-                let expire_at = new_entry.expire_at;
-
-                if mg.try_insert(key.clone(), new_entry).is_ok() {
-                    drop(mg);
-                    self.enqueue_expiry(key, expire_at);
-                    return snap;
-                }
-            }
-        }
-    }
 
     fn spawn_active_expirer(
         self: Arc<Self>,
@@ -592,18 +509,18 @@ where
         let _ = done_rx.recv();
     }
 
-    pub fn guard(&self) -> Guard<'_> {
+    pub fn guard(&self) -> LocalGuard<'_> {
         self.map.guard()
     }
 
-
-
-    pub fn iter_snapshots<'g>(
+    pub fn iter_snapshots<'g, G>(
         &'g self,
-        guard: &'g Guard<'_>,
-    ) -> impl Iterator<Item = (K, EntrySnapshot<V>)> + 'g {
+        guard: &'g G,
+    ) -> impl Iterator<Item = (K, EntrySnapshot<V>)> + 'g
+    where
+        G: Guard + 'g,
+    {
         let now = self.now_logical();
-
         self.map.iter(guard).filter_map(move |(k, entry)| {
             if entry.expire_at.is_some_and(|at| now >= at) {
                 None
