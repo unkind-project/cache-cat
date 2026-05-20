@@ -140,7 +140,7 @@ impl MyCache {
                         }
                         Ok(Some(my_value.value))
                     }
-                    None => Ok(None),
+                    None => Ok(Some(my_value.value)),
                 }
             }
         }

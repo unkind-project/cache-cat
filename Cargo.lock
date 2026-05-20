@@ -376,6 +376,7 @@ dependencies = [
  "bincode2",
  "bytes",
  "console-subscriber",
+ "crossbeam-channel",
  "crossbeam-utils",
  "flurry",
  "futures",
