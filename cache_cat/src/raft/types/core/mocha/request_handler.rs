@@ -21,6 +21,7 @@ pub fn do_request(
             ReadOperation::HGet(param) => my_cache.h_get(param, update.db_number),
             ReadOperation::SMembers(param) => my_cache.s_member(param, update.db_number),
             ReadOperation::HMGet(param) => my_cache.h_m_get(param, update.db_number),
+            ReadOperation::GetBit(param) => my_cache.get_bit(param, update.db_number),
         },
         Operation::Base(base) => match base {
             BaseOperation::Empty => {
@@ -43,6 +44,7 @@ pub fn do_request(
             BaseOperation::Insert(param) => my_cache.insert(param, update),
             BaseOperation::HDel(param) => my_cache.h_del(param, update),
             BaseOperation::SRem(param) => my_cache.s_rem(param, update),
+            BaseOperation::SetBit(param) => my_cache.set_bit(param, update),
         },
         Operation::Redis(redis) => match redis {
             RedisOperation::RedisDel(param) => my_cache.redis_del(param, update, external),

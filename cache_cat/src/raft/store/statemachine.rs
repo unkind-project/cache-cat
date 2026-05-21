@@ -185,9 +185,7 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
             raft_meta.last_applied_log_id = Some(entry.log_id);
             let st = &self.data.kvs;
             let response = match entry.payload {
-                EntryPayload::Blank => {
-                    Value::ok()
-                }
+                EntryPayload::Blank => Value::ok(),
                 EntryPayload::Normal(req) => {
                     let (time, db_number) = req.split_u64();
                     let write_clock = st.set_write_clock(time);
@@ -281,6 +279,9 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
                 }
                 BaseOperation::SRem(param) => {
                     self.data.kvs.s_rem(param, &mut update);
+                }
+                BaseOperation::SetBit(param) => {
+                    self.data.kvs.set_bit(param, &mut update);
                 }
             }
         }

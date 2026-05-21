@@ -1,4 +1,6 @@
 use crate::error::CacheCatError;
+use crate::protocol::bitmap::getbit::GetBitCommand;
+use crate::protocol::bitmap::setbit::SetBitCommand;
 use crate::protocol::connection::bgsave::BgsaveCommand;
 use crate::protocol::connection::echo::EchoCommand;
 use crate::protocol::connection::ping::PingCommand;
@@ -21,6 +23,7 @@ use crate::protocol::lua::evalsha::EvalShaCommand;
 use crate::protocol::lua::script::{ScriptCommand, ScriptParam};
 use crate::protocol::set::sadd::SAddCommand;
 use crate::protocol::set::smembers::SMembersCommand;
+use crate::protocol::set::srem::SRemCommand;
 use crate::protocol::string::append::AppendCommand;
 use crate::protocol::string::get::GetCommand;
 use crate::protocol::string::incr::IncrCommand;
@@ -39,7 +42,6 @@ use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use tracing::warn;
-use crate::protocol::set::srem::SRemCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -116,6 +118,8 @@ impl CommandFactory {
         factory.register("EVALSHA", EvalShaCommand);
         factory.register("HDEL", HDelCommand);
         factory.register("SREM", SRemCommand);
+        factory.register("SETBIT", SetBitCommand);
+        factory.register("GETBIT", GetBitCommand);
 
         factory
     }

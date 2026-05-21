@@ -10,6 +10,7 @@ pub mod string;
 pub mod transaction;
 pub mod zset;
 
+pub mod bitmap;
 pub mod lua_env;
 mod raft_command;
 

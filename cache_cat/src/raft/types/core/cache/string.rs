@@ -1,5 +1,5 @@
 use crate::error::ProtocolError;
-use crate::mocha::{ EntrySnapshot, ExpirePolicy, MochaOperation};
+use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
 use crate::protocol::NO_EXPIRATION;
 use crate::protocol::string::get::GetParams;
 use crate::protocol::string::mget::MgetParams;
@@ -9,9 +9,12 @@ use crate::raft::types::core::mocha::cas::ComputeCommand;
 use crate::raft::types::core::mocha::mocha::{MyCache, MyValue, Update, UpdateType};
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::core::value_object::ValueObject;
-use crate::raft::types::entry::bae_operation::{AppendReq, BaseOperation, IncrReq, SetReq};
+use crate::raft::types::entry::bae_operation::{
+    AppendReq, BaseOperation, IncrReq, SetBitReq, SetReq,
+};
 use crate::utils::parse_i64;
 use std::sync::Arc;
+
 
 impl ComputeCommand for SetReq {
     fn key(&self) -> Arc<Vec<u8>> {
@@ -171,6 +174,9 @@ impl ComputeCommand for AppendReq {
     }
 }
 
+
+
+
 impl MyCache {
     pub fn redis_mset(&self, params: MsetParams, update: &mut Update<'_>, external: bool) -> Value {
         if external {
@@ -324,6 +330,7 @@ impl MyCache {
             },
         }
     }
+
 
     pub fn set(&self, param: SetReq, update: &mut Update) -> Value {
         self.execute_compute(param, update)
