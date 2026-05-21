@@ -45,8 +45,6 @@ impl Clone for Database {
 #[derive(Debug)]
 pub struct MyCache {
     pub lua_env: LuaEnv,
-    // 在固定间隔内是否发生过删除操作
-    pub have_deleted: Arc<AtomicBool>,
 
     pub databases: Vec<Database>,
     // 这俩把锁是为了保证每条指令的原子性 多key写，多key读需要同时获取俩把锁 同时获取俩把锁时 先加write_lock
@@ -76,7 +74,7 @@ impl MyCache {
     }
 
     #[inline]
-    pub fn get_new_write_clock(&self) -> u64 {
+    pub fn generate_new_write_clock(&self) -> u64 {
         let read_time = self.read_logic_clock.load(Ordering::Acquire);
         let system_now = now_ms();
         let target = max(read_time, system_now);
@@ -96,7 +94,6 @@ impl MyCache {
 
     /// 创建 MyCache 时自动初始化内部 Cache
     pub fn new(db_number: u16) -> Result<Self, ProtocolError> {
-        let have_deleted = Arc::new(AtomicBool::new(false));
         let write_logic_clock = Arc::new(AtomicU64::new(0));
         let mut vec = Vec::new();
         for _ in 0..db_number {
@@ -107,7 +104,6 @@ impl MyCache {
         let lua_env = LuaEnv::new()?;
         Ok(Self {
             lua_env,
-            have_deleted,
             read_logic_clock: Arc::new(AtomicU64::new(0)),
             write_logic_clock,
             databases: vec,

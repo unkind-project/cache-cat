@@ -23,7 +23,12 @@ pub fn do_request(
             ReadOperation::HMGet(param) => my_cache.h_m_get(param, update.db_number),
         },
         Operation::Base(base) => match base {
-            BaseOperation::Empty => Value::ok(),
+            BaseOperation::Empty => {
+                for db in &my_cache.databases {
+                    db.mocha.active_expire_cycle_blocking();
+                }
+                Value::ok()
+            }
             BaseOperation::Set(param) => my_cache.set(param, update),
             BaseOperation::Expire(param) => my_cache.expire(param, update),
             BaseOperation::LPush(param) => my_cache.l_push(param, update),

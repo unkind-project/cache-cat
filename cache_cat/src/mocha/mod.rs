@@ -1,5 +1,6 @@
 mod test;
 
+use crate::utils::now_ms;
 use crossbeam_channel::{Receiver, Sender, bounded, select, unbounded};
 use papaya::{Compute, Equivalent, HashMap, LocalGuard, Operation};
 use serde::{Deserialize, Serialize};
@@ -9,7 +10,6 @@ use std::io::SeekFrom;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io;
 use tokio::io::{AsyncSeek, AsyncSeekExt, AsyncWrite, AsyncWriteExt};
 
@@ -266,11 +266,9 @@ where
         self.logic_clock.load(Ordering::Relaxed)
     }
 
+    #[inline(always)]
     fn now_local() -> u64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|duration| duration.as_millis() as u64)
-            .unwrap_or(0)
+        now_ms()
     }
 
     fn resolve_expire_at(&self, policy: ExpirePolicy) -> Option<u64> {
