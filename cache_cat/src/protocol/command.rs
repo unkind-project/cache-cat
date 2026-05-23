@@ -1,11 +1,13 @@
 use crate::error::CacheCatError;
 use crate::protocol::bitmap::getbit::GetBitCommand;
 use crate::protocol::bitmap::setbit::SetBitCommand;
+use crate::protocol::command::CommandResult::Immediate;
 use crate::protocol::connection::bgsave::BgsaveCommand;
 use crate::protocol::connection::echo::EchoCommand;
 use crate::protocol::connection::ping::PingCommand;
 use crate::protocol::connection::save::SaveCommand;
 use crate::protocol::connection::select::SelectCommand;
+use crate::protocol::connection::time::TimeCommand;
 use crate::protocol::hash::hdel::HDelCommand;
 use crate::protocol::hash::hget::HGetCommand;
 use crate::protocol::hash::hincrby::HIncrByCommand;
@@ -21,6 +23,7 @@ use crate::protocol::list::lrange::LRangeCommand;
 use crate::protocol::lua::eval::EvalCommand;
 use crate::protocol::lua::evalsha::EvalShaCommand;
 use crate::protocol::lua::script::{ScriptCommand, ScriptParam};
+use crate::protocol::pub_sub::subscribe::SubscribeCommand;
 use crate::protocol::set::sadd::SAddCommand;
 use crate::protocol::set::smembers::SMembersCommand;
 use crate::protocol::set::srem::SRemCommand;
@@ -41,8 +44,14 @@ use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use std::collections::HashMap;
+use tokio::sync::watch;
 use tracing::warn;
-use crate::protocol::connection::time::TimeCommand;
+use crate::protocol::pub_sub::publish::PublishCommand;
+
+pub enum CommandResult {
+    Immediate(Value),
+    Stream(Value, watch::Receiver<Option<Value>>),
+}
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -55,6 +64,17 @@ pub trait Command: Send + Sync {
     ) -> Result<Value, CacheCatError>;
 }
 
+#[async_trait]
+pub trait BlockCommand: Send + Sync {
+    /// Execute the command with given RESP items and server context
+    async fn execute(
+        &self,
+        client: &mut Client,
+        items: &[Value],
+        server: &RedisServer,
+    ) -> Result<(Value, watch::Receiver<Option<Value>>), CacheCatError>;
+}
+
 #[derive(Debug)]
 pub struct Client {
     pub db_number: u16,
@@ -64,6 +84,7 @@ pub struct Client {
 /// Command factory for creating and executing commands
 pub struct CommandFactory {
     commands: HashMap<String, Box<dyn Command>>,
+    block_commands: HashMap<String, Box<dyn BlockCommand>>,
 }
 
 impl CommandFactory {
@@ -71,12 +92,16 @@ impl CommandFactory {
     fn new() -> Self {
         Self {
             commands: HashMap::new(),
+            block_commands: HashMap::new(),
         }
     }
 
     /// Register a command with given name
     fn register<C: Command + 'static>(&mut self, name: impl Into<String>, cmd: C) {
         self.commands.insert(name.into(), Box::new(cmd));
+    }
+    fn register_block<C: BlockCommand + 'static>(&mut self, name: impl Into<String>, cmd: C) {
+        self.block_commands.insert(name.into(), Box::new(cmd));
     }
 
     /// Initialize the command factory with all supported commands
@@ -122,33 +147,52 @@ impl CommandFactory {
         factory.register("SETBIT", SetBitCommand);
         factory.register("GETBIT", GetBitCommand);
         factory.register("TIME", TimeCommand);
+        factory.register("PUBLISH", PublishCommand);
+
+        factory.register_block("SUBSCRIBE", SubscribeCommand);
 
         factory
     }
 
     /// Execute a RESP command on the given server
-    pub async fn execute(&self, client: &mut Client, value: Value, server: &RedisServer) -> Value {
+    pub async fn execute(
+        &self,
+        client: &mut Client,
+        value: Value,
+        server: &RedisServer,
+    ) -> CommandResult {
         match value {
             Value::Array(Some(items)) if !items.is_empty() => {
                 // Extract command name
                 let cmd_name = match &items[0] {
                     Value::BulkString(Some(data)) => String::from_utf8_lossy(data).to_uppercase(),
                     Value::SimpleString(s) => s.to_uppercase(),
-                    _ => return Value::error("invalid command format"),
+                    _ => return Immediate(Value::error("invalid command format")),
                 };
                 // Find and execute command
-                match self.commands.get(&cmd_name) {
-                    Some(cmd) => match cmd.execute(client, &items, server).await {
-                        Ok(v) => v,
+                if let Some(cmd) = self.commands.get(&cmd_name) {
+                    return match cmd.execute(client, &items, server).await {
+                        Ok(v) => Immediate(v),
                         Err(e) => {
                             warn!("Command '{}' error: {}", cmd_name, e);
-                            e.into() // Error → Value::Error
+                            Immediate(e.into())
                         }
-                    },
-                    None => Value::error(format!("unknown command '{}'", cmd_name)),
+                    };
                 }
+                if let Some(cmd) = self.block_commands.get(&cmd_name) {
+                    match cmd.execute(client, &items, server).await {
+                        Ok(v) => {
+                            return CommandResult::Stream(v.0, v.1);
+                        }
+                        Err(e) => {
+                            warn!("Command '{}' error: {}", cmd_name, e);
+                            return Immediate(e.into());
+                        }
+                    }
+                };
+                Immediate(Value::error("ERR unknown command"))
             }
-            _ => Value::error("ERR failed to parse command"),
+            _ => Immediate(Value::error("ERR failed to parse command")),
         }
     }
 }

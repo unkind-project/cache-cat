@@ -9,14 +9,11 @@
 
 use crate::error::{CacheCatError, ProtocolError};
 use crate::protocol::command::{Client, Command};
-use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
-use std::sync::Arc;
 
 /// PUBLISH command parameters
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -72,7 +69,11 @@ impl Command for PublishCommand {
         server: &RedisServer,
     ) -> Result<Value, CacheCatError> {
         let params = PublishParams::parse(items)?;
-
-        return Ok(Value::SimpleString(String::from("QUEUED")));
+        // 直接传入原始消息，让 publish_message 封装
+        server
+            .broadcast
+            .publish_message(&params.channel, params.message)
+            .await;
+        Ok(Value::SimpleString(String::from("QUEUED")))
     }
 }

@@ -1,14 +1,15 @@
-use crate::protocol::command::{Client, CommandFactory};
+use crate::protocol::command::{Client, CommandFactory, CommandResult};
 use crate::protocol::resp::Parser;
+use crate::raft::network::pub_sub::PubSub;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::raft_types::CacheCatApp;
 use bytes::{Buf, BytesMut};
 use futures::{FutureExt, SinkExt, StreamExt, future::BoxFuture, stream::FuturesOrdered};
+use parking_lot::Mutex;
 use std::io::Result as IoResult;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::broadcast;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 use tracing::{debug, error, info, warn};
 
@@ -17,6 +18,7 @@ pub struct RedisServer {
     pub(crate) app: Arc<CacheCatApp>,
     pub redis_addr: String,
     pub cmd_factory: Arc<CommandFactory>,
+    pub broadcast: Arc<PubSub>,
 }
 
 pub struct RespCodec;
@@ -55,11 +57,8 @@ impl RedisServer {
             app,
             redis_addr,
             cmd_factory,
+            broadcast: Arc::new(PubSub::new()),
         }
-    }
-    #[inline(always)]
-    async fn process_command(&self, db_number: &mut Client, value: Value) -> Value {
-        self.cmd_factory.execute(db_number, value, &self).await
     }
 
     async fn handle_connection_pipeline(
@@ -78,85 +77,36 @@ impl RedisServer {
             match frame_result {
                 Ok(value) => {
                     debug!("Received command from {}: {:?}", peer_addr, value);
-                    // 串行执行：等待完成
-                    let resp = self.process_command(&mut client, value).await;
-                    // 再写回
-                    if let Err(e) = writer.send(resp).await {
-                        warn!("Failed to send response to {}: {}", peer_addr, e);
-                        break;
+
+                    match self.cmd_factory.execute(&mut client, value, &self).await {
+                        CommandResult::Immediate(resp) => {
+                            if let Err(e) = writer.send(resp).await {
+                                warn!("Failed to send response to {}: {}", peer_addr, e);
+                                break;
+                            }
+                        }
+                        CommandResult::Stream(res, mut stream) => {
+                            if let Err(e) = writer.send(res).await {
+                                warn!("Failed to send response to {}: {}", peer_addr, e);
+                                break;
+                            }
+                            while stream.changed().await.is_ok() {
+                                let value = { stream.borrow().clone() };
+                                let v = match value {
+                                    None => break,
+                                    Some(v) => v,
+                                };
+                                if let Err(e) = writer.send(v).await {
+                                    warn!("Failed to send response to {}: {}", peer_addr, e);
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
                 Err(e) => {
                     error!("Protocol error from {}: {}", peer_addr, e);
                     break;
-                }
-            }
-        }
-
-        info!("Connection handler ended for {}", peer_addr);
-        Ok(())
-    }
-
-    async fn handle_connection(
-        self: Arc<Self>,
-        stream: TcpStream,
-        peer_addr: SocketAddr,
-    ) -> IoResult<()> {
-        stream.set_nodelay(true)?;
-        let framed = Framed::new(stream, RespCodec);
-        let (mut writer, mut reader) = framed.split();
-
-        // 保序执行：前面的命令没完成，后面的响应不会越过它
-        let mut pending: FuturesOrdered<BoxFuture<'static, Value>> = FuturesOrdered::new();
-
-        // 限制并发深度，避免客户端疯狂 pipeline 把内存打爆
-        const MAX_INFLIGHT: usize = 1024;
-        let mut inflight: usize = 0;
-        let mut peer_closed = false;
-
-        loop {
-            if peer_closed && inflight == 0 {
-                break;
-            }
-            let mut client = Client {
-                db_number: 0,
-                transaction_queue: None,
-            };
-            tokio::select! {
-                // 1) 继续读命令，只要队列没满
-                frame_result = reader.next(), if !peer_closed && inflight < MAX_INFLIGHT => {
-                    match frame_result {
-                        Some(Ok(value)) => {
-                            debug!("Received command from {}: {:?}", peer_addr, value);
-
-                            let server = Arc::clone(&self);
-                            let fut = async move {
-                                server.process_command(&mut client,value).await
-                            }.boxed();
-
-                            pending.push_back(fut);
-                            inflight += 1;
-                        }
-                        Some(Err(e)) => {
-                            error!("Protocol error from {}: {}", peer_addr, e);
-                            break;
-                        }
-                        None => {
-                            peer_closed = true;
-                        }
-                    }
-                }
-
-                // 2) 取出最早完成的结果并按顺序写回
-                maybe_resp = pending.next(), if inflight > 0 => {
-                    inflight -= 1;
-
-                    if let Some(resp) = maybe_resp {
-                        if let Err(e) = writer.send(resp).await {
-                            warn!("Failed to send response to {}: {}", peer_addr, e);
-                            break;
-                        }
-                    }
                 }
             }
         }
