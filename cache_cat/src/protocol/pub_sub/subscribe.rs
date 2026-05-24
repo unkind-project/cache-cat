@@ -73,4 +73,8 @@ impl BlockCommand for SubscribeCommand {
         let params = SubscribeParams::parse(items)?;
         Ok(server.broadcast.subscribe(params.channels, client.id).await)
     }
+
+    fn can_handle_unblock(&self, cmd_name: &str) -> bool {
+        true
+    }
 }
