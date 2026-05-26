@@ -184,7 +184,6 @@ async fn install_full_snapshot(
 async fn add_node(app: Arc<CacheCatApp>, req: JoinRequest) -> Result<(), String> {
     let node = Node {
         node_id: req.node_id,
-        sentinel_master_name: req.sentinel_master_name,
         endpoint: req.endpoint.clone(),
     };
     // 已经存在就不继续加入

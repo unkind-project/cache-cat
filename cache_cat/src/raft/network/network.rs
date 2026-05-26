@@ -19,10 +19,10 @@ pub struct NetworkFactory {}
 impl RaftNetworkFactory<TypeConfig> for NetworkFactory {
     type Network = TcpNetwork;
     async fn new_client(&mut self, target: NodeId, node: &Node) -> Self::Network {
-        let addr = node.endpoint.to_string();
+        let addr = node.endpoint.raft_addr();
         let nodes = Arc::new(RwLock::new(None));
         let arc_nodes = nodes.clone();
-        match RpcMultiClient::connect(&*node.endpoint.to_string()).await {
+        match RpcMultiClient::connect(&*node.endpoint.raft_addr()).await {
             Ok(client) => {
                 _ = arc_nodes.write().insert(client);
             }

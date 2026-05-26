@@ -1,5 +1,6 @@
 use super::endpoint::Endpoint;
 use crate::error::{CacheCatError, ProtocolError, StorageError};
+use crate::node::parsed_config::ParsedConfig;
 use crate::raft::application::cluster::Cluster;
 use crate::raft::application::connector::Connector;
 use crate::raft::application::pub_sub::PubSub;
@@ -9,8 +10,6 @@ use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::request::{Operation, Request};
 use crate::raft::types::file_operator::FileOperator;
 use openraft::RPCTypes::Vote;
-use openraft::ReadPolicy::LeaseRead;
-use openraft::async_runtime::WatchReceiver;
 use openraft::error::Timeout;
 use serde::Deserialize;
 use serde::Serialize;
@@ -29,7 +28,6 @@ pub type NodeId = u16;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Node {
     pub node_id: NodeId,
-    pub sentinel_master_name: String,
     pub endpoint: Endpoint,
 }
 
@@ -51,9 +49,9 @@ openraft::declare_raft_types!(
 );
 
 pub struct CacheCatApp {
+    pub config: ParsedConfig,
     pub node_id: NodeId,
     pub cluster: Cluster,
-    // pub raft: Raft,
     pub state_machine: StateMachineStore,
     pub path: PathBuf,
     pub connector: Connector,
@@ -87,7 +85,7 @@ impl CacheCatApp {
             };
             self.connector
                 .send_msg::<Req, Res>(
-                    &node.endpoint.to_string(),
+                    &node.endpoint.raft_addr(),
                     func_id,
                     req.clone(),
                     Duration::from_secs(5),

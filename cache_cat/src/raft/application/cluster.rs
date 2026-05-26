@@ -1,6 +1,7 @@
 use crate::error::{CacheCatError, Error, ProtocolError, StorageError};
+use crate::raft::types::endpoint::Endpoint;
 use crate::raft::types::entry::request::Request;
-use crate::raft::types::raft_types::{Node, NodeId, Raft, TypeConfig};
+use crate::raft::types::raft_types::{LeaderId, Node, NodeId, Raft, TypeConfig};
 use openraft::ReadPolicy::LeaseRead;
 use openraft::alias::VoteOf;
 use openraft::async_runtime::WatchReceiver;
@@ -30,6 +31,16 @@ impl Cluster {
 
     pub fn node_id(&self) -> &NodeId {
         self.raft.node_id()
+    }
+
+    pub async fn leader_addr(&self) -> Option<Endpoint> {
+        let leader_id = self.raft.current_leader().await?;
+        for (node_id, node) in self.nodes() {
+            if node_id == leader_id {
+                return Some(node.endpoint);
+            }
+        }
+        None
     }
 
     pub fn nodes(&self) -> Vec<(NodeId, Node)> {
