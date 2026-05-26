@@ -74,7 +74,7 @@ async fn benchmark_requests(apps: Arc<CacheCatApp>) {
                         ex_time: 0,
                     })),
                 );
-                apps_clone.raft.client_write(request).await.unwrap();
+                apps_clone.cluster.client_write(request).await.unwrap();
             }
         });
         handles.push(handle);

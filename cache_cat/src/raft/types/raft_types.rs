@@ -1,5 +1,6 @@
 use super::endpoint::Endpoint;
 use crate::error::{CacheCatError, ProtocolError, StorageError};
+use crate::raft::application::cluster::Cluster;
 use crate::raft::application::connector::Connector;
 use crate::raft::application::pub_sub::PubSub;
 use crate::raft::store::statemachine::StateMachineStore;
@@ -51,7 +52,8 @@ openraft::declare_raft_types!(
 
 pub struct CacheCatApp {
     pub node_id: NodeId,
-    pub raft: Raft,
+    pub cluster: Cluster,
+    // pub raft: Raft,
     pub state_machine: StateMachineStore,
     pub path: PathBuf,
     pub connector: Connector,
@@ -68,19 +70,11 @@ impl CacheCatApp {
         Req: Serialize + Clone + Send,
         Res: DeserializeOwned + Send,
     {
-        if !self.raft.is_leader() {
+        if !self.cluster.is_leader() {
             return Err(ProtocolError::ReadOnly.into());
         }
         // 用作用域确保所有 guard 提前释放
-        let nodes = {
-            let metrics_guard = self.raft.metrics();
-            let metrics = metrics_guard.borrow_watched();
-            metrics
-                .membership_config
-                .nodes()
-                .map(|(node_id, node)| (*node_id, node.clone()))
-                .collect::<Vec<_>>()
-        };
+        let nodes = self.cluster.nodes();
         for (node_id, node) in nodes {
             if node_id == self.node_id {
                 continue;
@@ -109,7 +103,7 @@ impl CacheCatApp {
         let write_clock = self.state_machine.data.kvs.generate_new_write_clock();
         let request = Request::new(write_clock, db_number, op);
         let res = self
-            .raft
+            .cluster
             .client_write(request)
             .await
             .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
@@ -120,15 +114,7 @@ impl CacheCatApp {
         key: Vec<u8>,
         db_number: u16,
     ) -> Result<Option<MyValue>, CacheCatError> {
-        let linearizer = self
-            .raft
-            .get_read_linearizer(LeaseRead)
-            .await
-            .map_err(|e| StorageError::ReadFailed(e.to_string()))?;
-        linearizer
-            .await_ready(&self.raft)
-            .await
-            .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
+        self.cluster.lease_read().await?;
         let read_lock = self.state_machine.data.kvs.read_lock.read();
         let my_value = self
             .state_machine
@@ -144,18 +130,9 @@ impl CacheCatApp {
         keys: Vec<Vec<u8>>,
         db_number: u16,
     ) -> Result<Vec<Option<MyValue>>, CacheCatError> {
-        let linearizer = self
-            .raft
-            .get_read_linearizer(LeaseRead)
-            .await
-            .map_err(|e| StorageError::ReadFailed(e.to_string()))?;
-        linearizer
-            .await_ready(&self.raft)
-            .await
-            .map_err(|e| StorageError::WriteFailed(e.to_string()))?;
+        self.cluster.lease_read().await?;
         let _write_lock = self.state_machine.data.kvs.write_lock.lock().await;
         let _read_lock = self.state_machine.data.kvs.read_lock.read();
-
         let mut vec = Vec::new();
         for key in keys {
             let my_value = self

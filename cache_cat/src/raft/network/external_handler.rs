@@ -105,7 +105,7 @@ pub async fn write(
 ) -> Result<ClientWriteResponse<TypeConfig>, String> {
     let write_clock = app.state_machine.data.kvs.generate_new_write_clock();
     req.set_write_clock(write_clock);
-    app.raft.client_write(req).await.map_err(|e| {
+    app.cluster.client_write(req).await.map_err(|e| {
         tracing::error!("write error: {:?}", e);
         e.to_string()
     })
@@ -115,7 +115,7 @@ pub async fn batch_write(
     app: Arc<CacheCatApp>,
     req: Vec<Request>,
 ) -> Result<Vec<Result<WriteResult<TypeConfig>, String>>, String> {
-    let stream = app.raft.client_write_many(req).await.map_err(|e| {
+    let stream = app.cluster.client_write_many(req).await.map_err(|e| {
         tracing::error!("write error: {:?}", e);
         e.to_string()
     })?;
@@ -146,7 +146,7 @@ async fn read(app: Arc<CacheCatApp>, get_req: GetReq) -> Result<GetRes, String> 
 
 async fn vote(app: Arc<CacheCatApp>, req: VoteReq) -> Result<VoteResponse<TypeConfig>, String> {
     // openraft 的 vote 是异步的
-    app.raft.vote(req.vote).await.map_err(|e| {
+    app.cluster.vote(req.vote).await.map_err(|e| {
         tracing::error!("vote error: {:?}", e);
         e.to_string()
     })
@@ -158,7 +158,7 @@ async fn append_entries(
     req: AppendEntriesReq,
 ) -> Result<AppendEntriesResponse<TypeConfig>, String> {
     let res = app
-        .raft
+        .cluster
         .append_entries(req.append_entries)
         .await
         .map_err(|e| e.to_string());
@@ -175,7 +175,7 @@ async fn install_full_snapshot(
         meta: req.snapshot_meta,
         snapshot: req.snapshot,
     };
-    app.raft
+    app.cluster
         .install_full_snapshot(req.vote, snapshot)
         .await
         .map_err(|e| e.to_string())
@@ -188,19 +188,19 @@ async fn add_node(app: Arc<CacheCatApp>, req: JoinRequest) -> Result<(), String>
         endpoint: req.endpoint.clone(),
     };
     // 已经存在就不继续加入
-    let existed = app.raft.voter_ids().any(|id| id == node.node_id);
+    let existed = app.cluster.voter_ids().any(|id| id == node.node_id);
     if existed {
         info!("node {} already exists", node.node_id);
         return Ok(());
     }
-    let _ = app.raft.add_learner(node.node_id, node.clone(), true).await;
+    let _ = app.cluster.add_learner(node.node_id, node.clone()).await;
     // 使用 AddVoters 而不是传入完整集合
     // 这会自动计算并添加到现有成员中
     let mut map = BTreeMap::new();
     map.insert(node.node_id, node.clone());
     let changes = ChangeMembers::AddVoters(map);
-    app.raft
-        .change_membership(changes, true)
+    app.cluster
+        .change_membership(changes)
         .await
         .map_err(|e| e.to_string())?;
     Ok(())

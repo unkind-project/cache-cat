@@ -34,7 +34,7 @@ impl RaftNodeBuilder {
                 if time_gap(write_clock) < duration {
                     continue;
                 }
-                if !cleanup_handle.app.raft.is_leader() {
+                if !cleanup_handle.app.cluster.is_leader() {
                     continue;
                 }
                 let mut have_expired = false;
@@ -50,7 +50,7 @@ impl RaftNodeBuilder {
                 info!("cleaning expired data");
                 let res = cleanup_handle
                     .app
-                    .raft
+                    .cluster
                     .client_write(Request::new(
                         kvs.generate_new_write_clock(),
                         0,

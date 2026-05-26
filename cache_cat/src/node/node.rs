@@ -1,9 +1,10 @@
 use crate::error::{Error, Result};
 use crate::node::parsed_config::ParsedConfig;
-use crate::raft::network::client::RpcClient;
+use crate::raft::application::cluster::Cluster;
 use crate::raft::application::connector::Connector;
-use crate::raft::network::network::NetworkFactory;
 use crate::raft::application::pub_sub::PubSub;
+use crate::raft::network::client::RpcClient;
+use crate::raft::network::network::NetworkFactory;
 use crate::raft::network::rpc::Server;
 use crate::raft::store::log_store::LogStore;
 use crate::raft::store::raft_engine::create_raft_engine;
@@ -68,7 +69,7 @@ impl RaftNode {
         let app = CacheCatApp {
             connector: Connector::new(),
             node_id,
-            raft,
+            cluster: Cluster::new(raft),
             state_machine: sm_store,
             path: dir.join(""),
             broadcast: Arc::new(PubSub::new()),
@@ -189,11 +190,11 @@ impl RaftNode {
     ///   - `Internal` if adding node to cluster fails
     async fn init_cluster(&self, node: Node) -> Result<()> {
         let app = &self.app;
-        if node.node_id != *app.raft.node_id() {
+        if node.node_id != *app.cluster.node_id() {
             return Err(Error::config(format!(
                 "Node ID {} does not match current node ID {}",
                 node.node_id,
-                app.raft.node_id()
+                app.cluster.node_id()
             )));
         }
 
@@ -209,21 +210,7 @@ impl RaftNode {
         let mut nodes = BTreeMap::new();
         nodes.insert(node_id, node);
 
-        if let Err(e) = app.raft.initialize(nodes.clone()).await {
-            match e {
-                RaftError::APIError(e) => match e {
-                    InitializeError::NotAllowed(e) => {
-                        info!("Already initialized: {}", e);
-                    }
-                    InitializeError::NotInMembers(e) => {
-                        return Err(Error::config(e.to_string()));
-                    }
-                },
-                RaftError::Fatal(e) => {
-                    return Err(Error::internal(e.to_string()));
-                }
-            }
-        }
+        app.cluster.initialize(nodes.clone()).await?;
         Ok(())
     }
 
