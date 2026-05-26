@@ -1,6 +1,6 @@
 node_id = 3
+sentinel_master_name = "fantastic-cluster"
 redis_addr = "127.0.0.1:6381"
-
 #在没有请求到来时 多少秒进行一次key的清理 0表示不清理
 cleaning_interval = 100
 databases = 16

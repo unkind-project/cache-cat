@@ -91,6 +91,7 @@ impl RaftNode {
         if config.raft_single {
             let node = Node {
                 node_id: config.node_id,
+                sentinel_master_name: config.sentinel_master_name.clone(),
                 endpoint: config.raft_endpoint.clone(),
             };
             raft_node.init_cluster(node).await?;
@@ -164,6 +165,7 @@ impl RaftNode {
 
         let join_req = JoinRequest {
             node_id: config.node_id,
+            sentinel_master_name: config.sentinel_master_name.clone(),
             endpoint: config.raft_endpoint.clone(),
         };
         // let req = ForwardRequest {

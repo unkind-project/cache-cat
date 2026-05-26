@@ -21,6 +21,8 @@ pub struct ParsedConfig {
 
     pub log_path: String,
 
+    pub sentinel_master_name: String,
+
     /// 选举超时时间，节点之间的时钟偏移不能超过该值 需要大于500
     pub election_timeout: u64,
     /// 超过这个值将会直接进行快照，为0代表用不快照
@@ -55,6 +57,7 @@ impl ParsedConfig {
             raft_single: config.raft.single,
             raft_join: config.raft.join.clone(),
             log_path: config.raft.log_path.clone(),
+            sentinel_master_name: config.sentinel_master_name.clone(),
             election_timeout,
             snapshot_policy,
             replication_lag_threshold: config.raft.replication_lag_threshold,

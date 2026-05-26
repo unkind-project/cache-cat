@@ -28,6 +28,7 @@ pub type NodeId = u16;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Node {
     pub node_id: NodeId,
+    pub sentinel_master_name: String,
     pub endpoint: Endpoint,
 }
 
