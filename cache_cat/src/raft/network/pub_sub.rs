@@ -126,12 +126,12 @@ impl PubSub {
                     subs.remove(&channel);
                 }
 
-                // 如果客户端实际订阅了这个频道，count 就是移除前的数量
-                // 如果没订阅，count 是移除前的数量（包含这个客户端？不，should +1）
+                // 修复：如果客户端实际订阅了这个频道，返回移除前的计数
+                // 如果没有订阅（不应该发生，但做防护），返回 0
                 Value::Array(Some(vec![
                     Value::SimpleString("unsubscribe".to_string()),
                     Value::BulkString(Some(channel)),
-                    Value::Integer(if existed { count } else { count + 1 }),
+                    Value::Integer(if existed { count } else { 0 }),
                 ]))
             }
             None => Value::Array(Some(vec![
@@ -204,7 +204,10 @@ impl PubSub {
         let mut responses = Vec::new();
         for pattern in &patterns {
             let resp = self.psubscribe_single(pattern.clone(), client_id).await;
-            responses.push(resp);
+            // 修复：使用 append 展开数组元素，而不是 push 整个响应
+            if let Value::Array(Some(mut elements)) = resp {
+                responses.append(&mut elements);
+            }
         }
 
         // 记录该客户端订阅了这些模式
@@ -237,85 +240,64 @@ impl PubSub {
         ]))
     }
 
-    /// 退订单个模式
-    pub async fn punsubscribe(&self, pattern: &[u8], client_id: u64) -> Result<Value, Value> {
-        let mut patterns = self.patterns.write().await;
-        if let Some(set) = patterns.get_mut(pattern) {
-            let count = set.len() as i64;
-            if set.remove(&client_id) {
-                if set.is_empty() {
-                    patterns.remove(pattern);
-                }
-
-                // 从客户端状态中移除
-                {
-                    let mut clients = self.clients.write().await;
-                    if let Some(state) = clients.get_mut(&client_id) {
-                        state.subscribed_patterns.remove(pattern);
-                        if state.subscribed_channels.is_empty()
-                            && state.subscribed_patterns.is_empty()
-                        {
-                            clients.remove(&client_id);
-                        }
-                    }
-                }
-
-                let resp = Value::Array(Some(vec![
-                    Value::SimpleString("punsubscribe".to_string()),
-                    Value::BulkString(Some(pattern.to_vec())),
-                    Value::Integer(count),
-                ]));
-                return Ok(resp);
-            }
-        }
-        Err(Value::error("no such pattern subscription"))
-    }
-
-    /// 发布用户消息
-    pub async fn publish_message(&self, channel: &[u8], message: Vec<u8>) -> Value {
-        let pub_msg = Value::Array(Some(vec![
-            Value::SimpleString("message".to_string()),
-            Value::BulkString(Some(channel.to_vec())),
-            Value::BulkString(Some(message)),
-        ]));
-        self.publish(channel, pub_msg).await
-    }
-
-    /// 发布消息
-    pub async fn publish(&self, channel: &[u8], message: Value) -> Value {
-        let mut delivered = 0i64;
-        let mut targets = HashSet::new();
+    pub async fn publish(&self, channel: &[u8], message_content: Vec<u8>) -> Value {
+        let mut delivered_clients = HashSet::new();
 
         // 精确频道订阅者
-        let subs = self.subs.read().await;
-        if let Some(set) = subs.get(channel) {
-            targets.extend(set.iter().copied());
-        }
-        drop(subs);
+        let exact_subs: HashSet<u64> = {
+            let subs = self.subs.read().await;
+            subs.get(channel).cloned().unwrap_or_default()
+        };
 
-        // 模式匹配订阅者
-        let patterns = self.patterns.read().await;
-        for (pattern, set) in patterns.iter() {
-            if matches_pattern(channel, pattern) {
-                targets.extend(set.iter().copied());
-            }
-        }
-        drop(patterns);
+        // 构建精确订阅消息
+        let exact_msg = Value::Array(Some(vec![
+            Value::SimpleString("message".to_string()),
+            Value::BulkString(Some(channel.to_vec())),
+            Value::BulkString(Some(message_content.clone())),
+        ]));
 
-        // 向目标客户端发送消息
-        if !targets.is_empty() {
-            let clients = self.clients.read().await;
-            for client_id in targets {
-                if let Some(state) = clients.get(&client_id) {
-                    // watch::Sender 发送消息，所有 subscribe() 返回的 Receiver 都能收到
-                    if state.sender.send(Some(message.clone())).is_ok() {
-                        delivered += 1;
-                    }
+        // 收集所有匹配的模式及其订阅者
+        let mut pattern_targets: Vec<(Vec<u8>, HashSet<u64>)> = Vec::new();
+        {
+            let patterns = self.patterns.read().await;
+            for (pattern, set) in patterns.iter() {
+                if matches_pattern(channel, pattern) {
+                    pattern_targets.push((pattern.clone(), set.clone()));
                 }
             }
         }
 
-        Value::Integer(delivered)
+        let clients = self.clients.read().await;
+
+        // 发送给精确订阅者
+        for client_id in &exact_subs {
+            if let Some(state) = clients.get(client_id) {
+                if state.sender.send(Some(exact_msg.clone())).is_ok() {
+                    delivered_clients.insert(*client_id);
+                }
+            }
+        }
+
+        // 发送给模式订阅者（每个模式使用独立的 pmessage 格式）
+        for (pattern, set) in &pattern_targets {
+            let pmessage = Value::Array(Some(vec![
+                Value::SimpleString("pmessage".to_string()),
+                Value::BulkString(Some(pattern.clone())),
+                Value::BulkString(Some(channel.to_vec())),
+                Value::BulkString(Some(message_content.clone())),
+            ]));
+            for client_id in set {
+                if let Some(state) = clients.get(client_id) {
+                    if state.sender.send(Some(pmessage.clone())).is_ok() {
+                        delivered_clients.insert(*client_id);
+                    }
+                }
+            }
+        }
+        drop(clients);
+
+        // 返回收到消息的客户端数量（去重）
+        Value::Integer(delivered_clients.len() as i64)
     }
 
     /// 完全移除客户端（连接断开时调用）
@@ -338,6 +320,113 @@ impl PubSub {
 
         // 移除客户端状态，sender 被 drop 后，所有 Receiver 会收到 RecvError::Closed
         self.clients.write().await.remove(&client_id);
+    }
+
+    /// 退订多个模式（外部调用）
+    pub async fn punsubscribe(
+        &self,
+        patterns: Vec<Vec<u8>>,
+        client_id: u64,
+    ) -> Value {
+        let mut responses = Vec::new();
+        for pattern in &patterns {
+            let resp = self.punsubscribe_single(pattern.clone(), client_id).await;
+            if let Value::Array(Some(mut elements)) = resp {
+                responses.append(&mut elements);
+            }
+        }
+
+        // 从客户端状态中移除这些模式的记录
+        {
+            let mut clients = self.clients.write().await;
+            if let Some(state) = clients.get_mut(&client_id) {
+                for pattern in &patterns {
+                    state.subscribed_patterns.remove(pattern);
+                }
+                // 如果没有订阅了，清理客户端
+                if state.subscribed_channels.is_empty() && state.subscribed_patterns.is_empty() {
+                    clients.remove(&client_id);
+                }
+            }
+        }
+
+        Value::Array(Some(responses))
+    }
+
+    /// 退订单个模式（内部辅助）
+    async fn punsubscribe_single(&self, pattern: Vec<u8>, client_id: u64) -> Value {
+        let mut patterns = self.patterns.write().await;
+        match patterns.get_mut(&pattern) {
+            Some(set) => {
+                let count = set.len() as i64;
+                let existed = set.remove(&client_id);
+                if set.is_empty() {
+                    patterns.remove(&pattern);
+                }
+                // 如果实际取消了订阅，返回移除前计数；否则（未订阅此模式）返回 0
+                Value::Array(Some(vec![
+                    Value::SimpleString("punsubscribe".to_string()),
+                    Value::BulkString(Some(pattern)),
+                    Value::Integer(if existed { count } else { 0 }),
+                ]))
+            }
+            None => Value::Array(Some(vec![
+                Value::SimpleString("punsubscribe".to_string()),
+                Value::BulkString(Some(pattern)),
+                Value::Integer(0),
+            ])),
+        }
+    }
+
+    /// 退订该客户端的所有模式（外部调用）
+    pub async fn punsubscribe_all_patterns(&self, client_id: u64) -> Value {
+        let mut responses = Vec::new();
+
+        // 获取该客户端订阅的所有模式
+        let patterns = {
+            let clients = self.clients.read().await;
+            clients
+                .get(&client_id)
+                .map(|state| {
+                    state
+                        .subscribed_patterns
+                        .iter()
+                        .cloned()
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default()
+        };
+
+        // 退订所有模式
+        let mut pats = self.patterns.write().await;
+        for pattern in &patterns {
+            if let Some(set) = pats.get_mut(pattern) {
+                let count = set.len() as i64;
+                set.remove(&client_id);
+                if set.is_empty() {
+                    pats.remove(pattern);
+                }
+                responses.push(Value::Array(Some(vec![
+                    Value::SimpleString("punsubscribe".to_string()),
+                    Value::BulkString(Some(pattern.clone())),
+                    Value::Integer(count),
+                ])));
+            }
+        }
+        drop(pats);
+
+        // 清理客户端状态
+        {
+            let mut clients = self.clients.write().await;
+            if let Some(state) = clients.get_mut(&client_id) {
+                state.subscribed_patterns.clear();
+                if state.subscribed_channels.is_empty() {
+                    clients.remove(&client_id);
+                }
+            }
+        }
+
+        Value::Array(Some(responses))
     }
 }
 

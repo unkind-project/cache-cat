@@ -94,9 +94,7 @@ async fn print_test(_app: Arc<CacheCatApp>, d: PrintTestReq) -> Result<PrintTest
 }
 
 async fn publish(app: Arc<CacheCatApp>, param: PublishReq) -> Result<(), String> {
-    app.broadcast
-        .publish_message(&param.channel, param.message)
-        .await;
+    app.broadcast.publish(&param.channel, param.message).await;
     Ok(())
 }
 
