@@ -428,6 +428,43 @@ impl PubSub {
 
         Value::Array(Some(responses))
     }
+    /// PUBSUB CHANNELS [pattern]
+    /// 列出当前活跃的频道，可选 pattern 进行 glob 过滤
+    pub async fn pubsub_channels(&self, pattern: Option<&[u8]>) -> Value {
+        let subs = self.subs.read().await;
+        let channels: Vec<Value> = subs
+            .keys()
+            .filter(|ch| {
+                if let Some(pat) = pattern {
+                    matches_pattern(ch, pat)
+                } else {
+                    true
+                }
+            })
+            .map(|ch| Value::BulkString(Some(ch.clone())))
+            .collect();
+        Value::Array(Some(channels))
+    }
+
+    /// PUBSUB NUMSUB [channel [channel ...]]
+    /// 返回指定频道的订阅者数量
+    pub async fn pubsub_numsub(&self, channels: &[Vec<u8>]) -> Value {
+        let subs = self.subs.read().await;
+        let mut result = Vec::with_capacity(channels.len() * 2);
+        for ch in channels {
+            let count = subs.get(ch).map(|s| s.len() as i64).unwrap_or(0);
+            result.push(Value::BulkString(Some(ch.clone())));
+            result.push(Value::Integer(count));
+        }
+        Value::Array(Some(result))
+    }
+
+    /// PUBSUB NUMPAT
+    /// 返回所有客户端订阅的模式数量（不同模式的数量）
+    pub async fn pubsub_numpat(&self) -> Value {
+        let patterns = self.patterns.read().await;
+        Value::Integer(patterns.len() as i64)
+    }
 }
 
 /// 简单的 glob 风格模式匹配（支持 * 和 ?）

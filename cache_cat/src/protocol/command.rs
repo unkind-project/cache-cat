@@ -26,6 +26,7 @@ use crate::protocol::lua::evalsha::EvalShaCommand;
 use crate::protocol::lua::script::{ScriptCommand, ScriptParam};
 use crate::protocol::pub_sub::psubscribe::PsubscribeCommand;
 use crate::protocol::pub_sub::publish::PublishCommand;
+use crate::protocol::pub_sub::pubsub::PubSubCommand;
 use crate::protocol::pub_sub::punsubscribe::PunsubscribeCommand;
 use crate::protocol::pub_sub::subscribe::{SubscribeCommand, SubscribeParams};
 use crate::protocol::pub_sub::unsubscribe::UnsubscribeCommand;
@@ -181,6 +182,7 @@ impl CommandFactory {
         factory.register("UNSUBSCRIBE", UnsubscribeCommand);
         factory.register_block("PSUBSCRIBE", PsubscribeCommand);
         factory.register("PUNSUBSCRIBE", PunsubscribeCommand);
+        factory.register("PUBSUB", PubSubCommand);
 
         factory
     }
