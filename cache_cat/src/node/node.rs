@@ -64,10 +64,10 @@ impl RaftNode {
         .map_err(|e| Error::internal(format!("Failed to create raft: {}", e)))?;
         let app = CacheCatApp {
             path,
+            cluster: Cluster::new(raft, config.raft_advertise_endpoint.clone()),
             config,
             connector: Connector::new(),
             node_id,
-            cluster: Cluster::new(raft),
             state_machine: sm_store,
             broadcast: Arc::new(PubSub::new()),
         };

@@ -5,6 +5,7 @@ use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use async_trait::async_trait;
 use std::collections::HashMap;
+use crate::protocol::sentinel::get_master_addr::SentinelGetMasterAddrByNameCommand;
 
 /// Command trait for sub-command registration
 #[async_trait]
@@ -27,11 +28,14 @@ impl SentinelCommand {
         let mut sub_commands: HashMap<String, Box<dyn SubCommand>> = HashMap::new();
         // Register all sentinel sub-commands
         sub_commands.insert("MASTERS".to_string(), Box::new(SentinelMastersCommand));
+        sub_commands.insert(
+            "GET-MASTER-ADDR-BY-NAME".to_string(),
+            Box::new(SentinelGetMasterAddrByNameCommand),
+        );
         // sub_commands.insert("MASTER".to_string(), Box::new(SentinelMasterCommand));
         // sub_commands.insert("SLAVES".to_string(), Box::new(SentinelSlavesCommand));
         // sub_commands.insert("REPLICAS".to_string(), Box::new(SentinelReplicasCommand));
         // sub_commands.insert("SENTINELS".to_string(), Box::new(SentinelSentinelsCommand));
-        // sub_commands.insert("GET-MASTER-ADDR-BY-NAME".to_string(), Box::new(SentinelGetMasterAddrByNameCommand));
         // sub_commands.insert("RESET".to_string(), Box::new(SentinelResetCommand));
         // sub_commands.insert("FAILOVER".to_string(), Box::new(SentinelFailoverCommand));
         // sub_commands.insert("MONITOR".to_string(), Box::new(SentinelMonitorCommand));

@@ -1,7 +1,7 @@
 use crate::error::{CacheCatError, Error, ProtocolError, StorageError};
 use crate::raft::types::endpoint::Endpoint;
 use crate::raft::types::entry::request::Request;
-use crate::raft::types::raft_types::{LeaderId, Node, NodeId, Raft, TypeConfig};
+use crate::raft::types::raft_types::{Node, NodeId, Raft, TypeConfig};
 use openraft::ReadPolicy::LeaseRead;
 use openraft::alias::VoteOf;
 use openraft::async_runtime::WatchReceiver;
@@ -12,19 +12,50 @@ use openraft::raft::{
     AppendEntriesRequest, AppendEntriesResponse, ClientWriteResponse, SnapshotResponse,
     VoteRequest, VoteResponse, WriteResult,
 };
-use openraft::{ChangeMembers, ReadPolicy, Snapshot};
+use openraft::{ChangeMembers, ReadPolicy, Snapshot, WatchChangeHandle};
 use std::collections::BTreeMap;
+use std::sync::Arc;
+use std::sync::atomic::AtomicU16;
 use tracing::{error, info};
 
 pub struct Cluster {
+    current_endpoint: Endpoint,
+    watch_change_handle: WatchChangeHandle<TypeConfig>,
+    last_master: Arc<AtomicU16>,
     raft: Raft,
 }
 
 impl Cluster {
-    pub fn new(raft: Raft) -> Self {
-        Self { raft }
+    pub fn new(raft: Raft, current_endpoint: Endpoint) -> Self {
+        let last_master = Arc::new(AtomicU16::new(raft.node_id().clone()));
+        let last = last_master.clone();
+        let watch_change_handle = raft.on_cluster_leader_change(move |_old, new| {
+            let last = last.clone();
+            async move {
+                // 假设 LeaderId 有 node_id 字段，并且是 u16 类型
+                last.store(new.0.node_id, std::sync::atomic::Ordering::Relaxed);
+            }
+        });
+        Self {
+            current_endpoint,
+            watch_change_handle,
+            last_master,
+            raft,
+        }
     }
 
+    //如果没有选出过leader就返回自己
+    pub fn last_leader(&self) -> Endpoint {
+        let node_id = self.last_master.load(std::sync::atomic::Ordering::Relaxed);
+        let metrics_guard = self.raft.metrics();
+        let metrics = metrics_guard.borrow_watched();
+        metrics
+            .membership_config
+            .nodes()
+            .find(|(id, _)| **id == node_id)
+            .map(|(_, node)| node.endpoint.clone())
+            .unwrap_or_else(|| self.current_endpoint.clone())
+    }
     pub fn is_leader(&self) -> bool {
         self.raft.is_leader()
     }
