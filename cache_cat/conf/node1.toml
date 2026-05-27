@@ -1,7 +1,7 @@
 node_id = 1
 [redis]
 #全局統一 redis哨兵的master名字
-sentinel_master_name = "fantastic-cluster"
+sentinel_master_name = "cat"
 redis_port = 6379
 #在没有请求到来时 多少秒进行一次key的清理 0表示不清理
 cleaning_interval = 100

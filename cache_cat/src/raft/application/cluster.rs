@@ -44,6 +44,17 @@ impl Cluster {
         }
     }
 
+    pub fn last_slave(&self) -> Vec<Endpoint> {
+        let last_master_id = self.last_master.load(std::sync::atomic::Ordering::Relaxed);
+        let mut res = Vec::new();
+        for (node_id, node) in self.nodes() {
+            if node_id != last_master_id {
+                res.push(node.endpoint);
+            }
+        }
+        res
+    }
+
     //如果没有选出过leader就返回自己
     pub fn last_leader(&self) -> Endpoint {
         let node_id = self.last_master.load(std::sync::atomic::Ordering::Relaxed);

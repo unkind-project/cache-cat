@@ -4,3 +4,6 @@ direct_sentinel_conn = redis.Redis(host='127.0.0.1', port=6380)
 masters_info = direct_sentinel_conn.sentinel_masters()
 
 print(masters_info)
+
+slave_info=direct_sentinel_conn.sentinel_slaves("fantastic-cluster")
+print(slave_info)
