@@ -3,7 +3,7 @@ use crate::raft::types::endpoint::Endpoint;
 use crate::raft::types::entry::request::Request;
 use crate::raft::types::raft_types::{Node, NodeId, Raft, TypeConfig};
 use openraft::ReadPolicy::LeaseRead;
-use openraft::alias::VoteOf;
+use openraft::alias::{JoinErrorOf, VoteOf};
 use openraft::async_runtime::WatchReceiver;
 use openraft::base::BoxStream;
 use openraft::error::{ClientWriteError, Fatal, InitializeError, LinearizableReadError, RaftError};
@@ -13,7 +13,7 @@ use openraft::raft::{
     VoteRequest, VoteResponse, WriteResult,
 };
 use openraft::{ChangeMembers, ReadPolicy, Snapshot, WatchChangeHandle};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU16;
 use tracing::{error, info};
@@ -156,6 +156,29 @@ impl Cluster {
     #[inline]
     pub fn voter_ids(&self) -> impl Iterator<Item = NodeId> {
         self.raft.voter_ids()
+    }
+
+    #[inline]
+    pub async fn remove_self(
+        &self,
+    ) -> Result<(), RaftError<TypeConfig, ClientWriteError<TypeConfig>>> {
+        // 使用 AddVoters 而不是传入完整集合
+        // 这会自动计算并添加到现有成员中
+
+        let mut set: BTreeSet<NodeId> = BTreeSet::new();
+        set.insert(*self.node_id());
+        let changes: ChangeMembers<TypeConfig> = ChangeMembers::RemoveVoters(set);
+        self.raft.change_membership(changes, true).await?;
+
+        let mut set: BTreeSet<NodeId> = BTreeSet::new();
+        set.insert(*self.node_id());
+        let changes: ChangeMembers<TypeConfig> = ChangeMembers::RemoveNodes(set);
+        self.raft.change_membership(changes, true).await?;
+        Ok(())
+    }
+    #[inline]
+    pub async fn shutdown(&self) -> Result<(), JoinErrorOf<TypeConfig>> {
+        self.raft.shutdown().await
     }
 
     #[inline]

@@ -56,6 +56,7 @@ use std::collections::HashMap;
 use tokio::select;
 use tokio::sync::watch;
 use tracing::{error, warn};
+use crate::protocol::server::shutdown::ShutdownCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -177,6 +178,7 @@ impl CommandFactory {
         // Connection management
         factory.register("BGSAVE", BgsaveCommand);
         factory.register("SAVE", SaveCommand);
+        factory.register("SHUTDOWN", ShutdownCommand);
         // Pub/Sub commands
         factory.register("PUBLISH", PublishCommand);
         factory.register_block("SUBSCRIBE", SubscribeCommand);
@@ -186,6 +188,8 @@ impl CommandFactory {
         factory.register("PUBSUB", PubSubCommand);
         //Sentinel
         factory.register("SENTINEL", SentinelCommand::new());
+
+
         factory
     }
 
