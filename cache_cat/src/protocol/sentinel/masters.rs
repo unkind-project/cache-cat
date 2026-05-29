@@ -21,7 +21,7 @@ impl SubCommand for SentinelMastersCommand {
         let mut flags = "master";
         let endpoint = match leader_endpoint {
             None => {
-                flags = "s_down,disconnected";
+                flags = "master,o_down,disconnected";
                 server.app.config.raft_advertise_endpoint.clone()
             }
             Some(endpoint) => endpoint,

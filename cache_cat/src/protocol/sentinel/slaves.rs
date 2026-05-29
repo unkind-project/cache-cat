@@ -27,7 +27,7 @@ impl SubCommand for SentinelSlavesCommand {
             return Ok(Value::Array(None));
         }
         let slaves = server.app.cluster.last_slave();
-        let current_node_id = server.app.config.node_id;
+        let current_node_id = server.app.cluster.node_id();
         let mut result = Vec::new();
         let leader_info = server.app.cluster.leader_addr().await;
         let last_leader = server.app.cluster.last_leader();
@@ -35,21 +35,25 @@ impl SubCommand for SentinelSlavesCommand {
         for slave in slaves {
             let mut slave_info = Vec::new();
             slave_info.push(Value::BulkString(Some(b"name".to_vec())));
-            slave_info.push(Value::BulkString(Some(slave.redis_addr().into_bytes())));
+            slave_info.push(Value::BulkString(Some(slave.endpoint.redis_addr().into_bytes())));
             slave_info.push(Value::BulkString(Some(b"ip".to_vec())));
             slave_info.push(Value::BulkString(Some(
-                slave.addr().to_string().into_bytes(),
+                slave.endpoint.addr().to_string().into_bytes(),
             )));
             slave_info.push(Value::BulkString(Some(b"port".to_vec())));
             slave_info.push(Value::BulkString(Some(
-                slave.redis_port().to_string().into_bytes(),
+                slave.endpoint.redis_port().to_string().into_bytes(),
             )));
             slave_info.push(Value::BulkString(Some(b"runid".to_vec())));
             slave_info.push(Value::BulkString(Some(
                 current_node_id.to_string().into_bytes(),
             )));
             slave_info.push(Value::BulkString(Some(b"flags".to_vec())));
-            slave_info.push(Value::BulkString(Some(b"slave".to_vec())));
+            if server.app.cluster.is_survive(slave.node_id).await{
+                slave_info.push(Value::BulkString(Some(b"slave".to_vec())));
+            }else{
+                slave_info.push(Value::BulkString(Some(b"slave,o_down,disconnected".to_vec())));
+            }
 
             slave_info.push(Value::BulkString(Some(b"master-link-status".to_vec())));
             if leader_info.is_some() {

@@ -20,6 +20,7 @@ use std::fmt::Result as FmtResult;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+use futures::future::join_all;
 use tokio::sync::broadcast;
 
 pub type SnapshotData = tokio::fs::File;
@@ -51,7 +52,6 @@ openraft::declare_raft_types!(
 
 pub struct CacheCatApp {
     pub config: ParsedConfig,
-    pub node_id: NodeId,
     pub cluster: Cluster,
     pub state_machine: StateMachineStore,
     pub path: PathBuf,
@@ -76,29 +76,33 @@ impl CacheCatApp {
         if !self.cluster.is_leader() {
             return Err(ProtocolError::ReadOnly.into());
         }
-        // 用作用域确保所有 guard 提前释放
         let nodes = self.cluster.nodes();
+        let mut futures = Vec::new();
         for (node_id, node) in nodes {
-            if node_id == self.node_id {
+            if node_id == self.cluster.node_id() {
                 continue;
             }
+            // 关键：将地址转为拥有所有权的 String，避免引用 node 造成生命周期问题
+            let addr = node.endpoint.raft_addr().to_owned();
+            let req = req.clone();
             let timeout = Timeout {
                 action: Vote,
                 target: node_id,
-                timeout: Duration::from_secs(5),
-                id: self.node_id,
+                timeout: Duration::from_secs(2),
+                id: self.cluster.node_id(),
             };
-            self.connector
-                .send_msg::<Req, Res>(
-                    &node.endpoint.raft_addr(),
-                    func_id,
-                    req.clone(),
-                    Duration::from_secs(5),
-                    timeout,
-                )
-                .await?;
+            // 构造一个 Future 但不立即 .await
+            let fut = self.connector.send_msg::<Req, Res>(
+                addr,               // 现在可以安全 move 进入 Future
+                func_id,
+                req,
+                Duration::from_secs(2),
+                timeout,
+            );
+            futures.push(fut);
         }
-
+        // 并发执行所有请求，忽略结果
+        let _ = join_all(futures).await;
         Ok(())
     }
 

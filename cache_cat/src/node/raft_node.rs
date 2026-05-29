@@ -67,7 +67,6 @@ impl RaftNode {
             cluster: Cluster::new(raft, config.raft_advertise_endpoint.clone()),
             config,
             connector: Connector::new(),
-            node_id,
             state_machine: sm_store,
             pubsub: Arc::new(PubSub::new()),
             shutdown_tx: shutdown_tx.clone(),
@@ -185,7 +184,7 @@ impl RaftNode {
     ///   - `Internal` if adding node to cluster fails
     async fn init_cluster(&self, node: Node) -> Result<()> {
         let app = &self.app;
-        if node.node_id != *app.cluster.node_id() {
+        if node.node_id != app.cluster.node_id() {
             return Err(Error::config(format!(
                 "Node ID {} does not match current node ID {}",
                 node.node_id,

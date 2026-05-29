@@ -1,5 +1,5 @@
-use crate::error::ErrorKind::RPC;
 use crate::error::{CacheCatError, Error};
+use crate::raft::application::cluster::NodeState;
 use crate::raft::network::model::{
     AppendEntriesReq, GetReq, GetRes, InstallFullSnapshotReq, PrintTestReq, PrintTestRes,
     PublishReq, VoteReq,
@@ -41,6 +41,11 @@ pub static HANDLER_TABLE: &[HandlerEntry] = &[
     (9, || Box::new(RpcMethod { func: add_node })),
     (10, || Box::new(RpcMethod { func: batch_write })),
     (11, || Box::new(RpcMethod { func: publish })),
+    (12, || {
+        Box::new(RpcMethod {
+            func: set_nodes_state,
+        })
+    }),
 ];
 #[async_trait]
 pub trait RpcHandler: Send + Sync {
@@ -202,5 +207,11 @@ async fn add_node(app: Arc<CacheCatApp>, req: JoinRequest) -> Result<(), String>
         .change_membership(changes)
         .await
         .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+async fn set_nodes_state(app: Arc<CacheCatApp>, req: NodeState) -> Result<(), String> {
+    info!("set_nodes_state: {:?}", req);
+    app.cluster.set_nodes_state(req).await;
     Ok(())
 }
