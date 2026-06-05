@@ -32,6 +32,7 @@ use std::collections::HashMap;
 use std::fmt;
 use tracing::warn;
 use crate::protocol::list::lpop::LPopCommand;
+use crate::protocol::zset::zrangegetscore::ZRangeByScoreCommand;
 
 pub trait RaftCommand: Send + Sync {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError>;
@@ -82,6 +83,7 @@ impl RaftCommandFactory {
         factory.register("HGET", HGetCommand);
         factory.register("ZADD", ZAddCommand);
         factory.register("ZRANGE", ZRangeCommand);
+        factory.register("ZRANGEBYSCORE", ZRangeByScoreCommand);
         factory.register("SADD", SAddCommand);
         factory.register("HINCRBY", HIncrByCommand);
         factory.register("EXISTS", ExistsCommand);

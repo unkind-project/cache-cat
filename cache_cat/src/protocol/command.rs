@@ -66,6 +66,7 @@ use tokio::select;
 use tokio::sync::watch;
 use tokio_util::codec::Framed;
 use tracing::{error, warn};
+use crate::protocol::zset::zrangegetscore::ZRangeByScoreCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -249,6 +250,7 @@ impl CommandFactory {
         // ZSet commands
         factory.register("ZADD", ZAddCommand);
         factory.register("ZRANGE", ZRangeCommand);
+        factory.register("ZRANGEBYSCORE", ZRangeByScoreCommand);
         // Bitmap commands
         factory.register("SETBIT", SetBitCommand);
         factory.register("GETBIT", GetBitCommand);
