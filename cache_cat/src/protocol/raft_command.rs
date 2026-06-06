@@ -10,6 +10,7 @@ use crate::protocol::key::exists::ExistsCommand;
 use crate::protocol::key::expire::ExpireCommand;
 use crate::protocol::key::persist::PersistCommand;
 use crate::protocol::key::rename::RenameCommand;
+use crate::protocol::list::lpop::LPopCommand;
 use crate::protocol::list::lpush::LPushCommand;
 use crate::protocol::list::lrange::LRangeCommand;
 use crate::protocol::lua::eval::EvalCommand;
@@ -23,16 +24,16 @@ use crate::protocol::string::incr::IncrCommand;
 use crate::protocol::string::incrby::IncrByCommand;
 use crate::protocol::string::mget::MgetCommand;
 use crate::protocol::string::mset::MsetCommand;
+use crate::protocol::string::psetex::PSetExCommand;
 use crate::protocol::string::set::SetCommand;
 use crate::protocol::zset::zadd::ZAddCommand;
 use crate::protocol::zset::zrange::ZRangeCommand;
+use crate::protocol::zset::zrangegetscore::ZRangeByScoreCommand;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::request::Operation;
 use std::collections::HashMap;
 use std::fmt;
 use tracing::warn;
-use crate::protocol::list::lpop::LPopCommand;
-use crate::protocol::zset::zrangegetscore::ZRangeByScoreCommand;
 
 pub trait RaftCommand: Send + Sync {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError>;
@@ -96,6 +97,7 @@ impl RaftCommandFactory {
         factory.register("SETBIT", SetBitCommand);
         factory.register("GETBIT", GetBitCommand);
         factory.register("LPOP", LPopCommand);
+        factory.register("PSETEX", PSetExCommand);
         factory
     }
 

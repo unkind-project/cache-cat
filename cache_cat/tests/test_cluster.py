@@ -78,3 +78,13 @@ r.delete("my_zset")
 r.zadd("my_zset", {"a": 1, "b": 2, "c": 3})
 print(r.zrange("my_zset", 0, -1))
 print(r.zrangebyscore("my_zset", 1, 2))
+
+
+r.psetex(
+    name="user:1",
+    time_ms=50,
+    value="Bella"
+)
+# sleep(0.01)
+print(r.get("123123"))
+

@@ -43,30 +43,31 @@ use crate::protocol::string::incr::IncrCommand;
 use crate::protocol::string::incrby::IncrByCommand;
 use crate::protocol::string::mget::MgetCommand;
 use crate::protocol::string::mset::MsetCommand;
+use crate::protocol::string::psetex::PSetExCommand;
 use crate::protocol::string::set::SetCommand;
 use crate::protocol::transaction::discard::DiscardCommand;
 use crate::protocol::transaction::exec::ExecCommand;
 use crate::protocol::transaction::multi::MultiCommand;
 use crate::protocol::zset::zadd::ZAddCommand;
 use crate::protocol::zset::zrange::ZRangeCommand;
+use crate::protocol::zset::zrangegetscore::ZRangeByScoreCommand;
 use crate::raft::network::redis_server::{RedisServer, RespCodec};
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::request::Operation;
 use crate::utils::now_ms;
 use crate::utils::times::now_us;
 use async_trait::async_trait;
+use clap::builder::Str;
 use futures::StreamExt;
 use futures::{Sink, SinkExt, Stream};
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use clap::builder::Str;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
 use tokio::sync::watch;
 use tokio_util::codec::Framed;
 use tracing::{error, warn};
-use crate::protocol::zset::zrangegetscore::ZRangeByScoreCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -120,8 +121,8 @@ pub struct Client {
     pub last_interaction: u64,
     pub flag: ClientFlag,
     pub last_cmd: String,
-    pub lib_name:String,
-    pub lib_ver:String,
+    pub lib_name: String,
+    pub lib_ver: String,
 }
 
 impl Client {
@@ -234,6 +235,7 @@ impl CommandFactory {
         factory.register("EXISTS", ExistsCommand);
         factory.register("PERSIST", PersistCommand);
         factory.register("RENAME", RenameCommand);
+        factory.register("PSETEX", PSetExCommand);
         // List commands
         factory.register("LPUSH", LPushCommand);
         factory.register("LRANGE", LRangeCommand);
