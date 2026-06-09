@@ -10,6 +10,7 @@ use crate::protocol::connection::quit::QuitCommand;
 use crate::protocol::connection::select::SelectCommand;
 use crate::protocol::hash::hdel::HDelCommand;
 use crate::protocol::hash::hget::HGetCommand;
+use crate::protocol::hash::hgetall::HGetAllCommand;
 use crate::protocol::hash::hincrby::HIncrByCommand;
 use crate::protocol::hash::hmget::HMGetCommand;
 use crate::protocol::hash::hset::HSetCommand;
@@ -42,6 +43,7 @@ use crate::protocol::string::append::AppendCommand;
 use crate::protocol::string::get::GetCommand;
 use crate::protocol::string::incr::IncrCommand;
 use crate::protocol::string::incrby::IncrByCommand;
+use crate::protocol::string::len::StrLenCommand;
 use crate::protocol::string::mget::MgetCommand;
 use crate::protocol::string::mset::MsetCommand;
 use crate::protocol::string::psetex::PSetExCommand;
@@ -71,7 +73,6 @@ use tokio::select;
 use tokio::sync::watch;
 use tokio_util::codec::Framed;
 use tracing::{error, warn};
-use crate::protocol::string::len::StrLenCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -253,6 +254,7 @@ impl CommandFactory {
         factory.register("HINCRBY", HIncrByCommand);
         factory.register("HMGET", HMGetCommand);
         factory.register("HDEL", HDelCommand);
+        factory.register("HGETALL", HGetAllCommand);
         // Set commands
         factory.register("SADD", SAddCommand);
         factory.register("SMEMBERS", SMembersCommand);

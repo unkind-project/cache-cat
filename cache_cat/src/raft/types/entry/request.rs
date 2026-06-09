@@ -80,6 +80,7 @@ impl fmt::Display for Request {
                 ReadOperation::GetBit(req) => write!(f, "GetBit: {}", req),
                 ReadOperation::ZRangeByScore(req) => write!(f, "ZRangeByScore: {}", req),
                 ReadOperation::StrLen(req) => write!(f, "StrLen: {}", req),
+                ReadOperation::HGetAll(req) => write!(f, "HGetAll: {}", req),
             },
             Operation::Base(op) => match op {
                 BaseOperation::Empty => write!(f, "None"),

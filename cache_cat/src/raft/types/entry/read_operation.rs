@@ -8,6 +8,7 @@ use crate::protocol::hash::hmget::HMGetParams;
 use crate::protocol::set::smembers::SMembersParams;
 use crate::protocol::string::get::GetParams;
 use serde::{Deserialize, Serialize};
+use crate::protocol::hash::hgetall::HGetAllParams;
 use crate::protocol::string::len::StrLenParams;
 use crate::protocol::zset::zrangegetscore::ZRangeByScoreParams;
 
@@ -24,4 +25,5 @@ pub enum ReadOperation {
     GetBit(GetBitParams),
     ZRangeByScore(ZRangeByScoreParams),
     StrLen(StrLenParams),
+    HGetAll(HGetAllParams)
 }

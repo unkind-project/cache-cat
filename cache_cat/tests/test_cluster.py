@@ -97,3 +97,9 @@ print(r.get("my_key2"))
 r.set("my_key2","测试test")
 
 print(r.strlen("my_key2"))
+
+
+r.hset('test2', 'test', 'test')
+r.hset('test2', 'test2', 'test2')
+print(r.hgetall('test2'))
+
