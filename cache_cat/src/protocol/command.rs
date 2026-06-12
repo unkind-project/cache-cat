@@ -15,12 +15,14 @@ use crate::protocol::hash::hincrby::HIncrByCommand;
 use crate::protocol::hash::hkeys::HKeysCommand;
 use crate::protocol::hash::hmget::HMGetCommand;
 use crate::protocol::hash::hset::HSetCommand;
+use crate::protocol::hash::hvals::HValsCommand;
 use crate::protocol::key::del::DelCommand;
 use crate::protocol::key::exists::ExistsCommand;
 use crate::protocol::key::expire::ExpireCommand;
 use crate::protocol::key::persist::PersistCommand;
 use crate::protocol::key::rename::RenameCommand;
 use crate::protocol::key::renamenx::RenameNxCommand;
+use crate::protocol::list::llen::LLenCommand;
 use crate::protocol::list::lpush::LPushCommand;
 use crate::protocol::list::lrange::LRangeCommand;
 use crate::protocol::lua::eval::EvalCommand;
@@ -72,7 +74,6 @@ use tokio::select;
 use tokio::sync::watch;
 use tokio_util::codec::Framed;
 use tracing::{error, warn};
-use crate::protocol::hash::hvals::HValsCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -248,6 +249,7 @@ impl CommandFactory {
         // List commands
         factory.register("LPUSH", LPushCommand);
         factory.register("LRANGE", LRangeCommand);
+        factory.register("LLEN", LLenCommand);
         // Hash commands
         factory.register("HSET", HSetCommand);
         factory.register("HGET", HGetCommand);

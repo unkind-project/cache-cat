@@ -110,7 +110,8 @@ print(r.mget(["test12","test12"]))
 
 
 
-
+r.lpush("list test1", "test")
+print(r.llen("list test1"))
 
 
 

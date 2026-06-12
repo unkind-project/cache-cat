@@ -20,6 +20,7 @@ pub fn read_request(my_cache: &MyCache, read_operation: ReadOperation, db_number
         ReadOperation::HGetAll(param) => my_cache.h_get_all(param, db_number),
         ReadOperation::HKeys(param) => my_cache.h_keys(param, db_number),
         ReadOperation::HVals(param) => my_cache.h_vals(param, db_number),
+        ReadOperation::LLen(param) => my_cache.l_len(param, db_number),
     }
 }
 

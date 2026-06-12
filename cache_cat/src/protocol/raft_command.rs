@@ -14,11 +14,11 @@ use crate::protocol::key::expire::ExpireCommand;
 use crate::protocol::key::persist::PersistCommand;
 use crate::protocol::key::rename::RenameCommand;
 use crate::protocol::key::renamenx::RenameNxCommand;
+use crate::protocol::list::llen::LLenCommand;
 use crate::protocol::list::lpop::LPopCommand;
 use crate::protocol::list::lpush::LPushCommand;
 use crate::protocol::list::lrange::LRangeCommand;
 use crate::protocol::lua::eval::EvalCommand;
-use crate::protocol::server::time::TimeCommand;
 use crate::protocol::set::sadd::SAddCommand;
 use crate::protocol::set::smembers::SMembersCommand;
 use crate::protocol::set::srem::SRemCommand;
@@ -37,17 +37,17 @@ use crate::protocol::zset::zadd::ZAddCommand;
 use crate::protocol::zset::zrange::ZRangeCommand;
 use crate::protocol::zset::zrangegetscore::ZRangeByScoreCommand;
 use crate::raft::types::core::response_value::Value;
+use crate::raft::types::entry::read_operation::ReadOperation;
 use crate::raft::types::entry::request::Operation;
 use std::collections::HashMap;
 use std::fmt;
 use tracing::warn;
-use crate::raft::types::entry::read_operation::ReadOperation;
 
 pub trait RaftCommand: Send + Sync {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError>;
 }
 
-pub trait ReadRaftCommand:RaftCommand{
+pub trait ReadRaftCommand: RaftCommand {
     fn read_operation(&self, items: &[Value]) -> Result<ReadOperation, ProtocolError>;
 }
 
@@ -124,6 +124,7 @@ impl RaftCommandFactory {
         factory.register("SETNX", SetNxCommand);
         factory.register("STRLEN", StrLenCommand);
         factory.register("HVALS", HValsCommand);
+        factory.register("LLEN", LLenCommand);
         factory
     }
 

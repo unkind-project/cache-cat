@@ -83,6 +83,7 @@ impl fmt::Display for Request {
                 ReadOperation::HGetAll(req) => write!(f, "HGetAll: {}", req),
                 ReadOperation::HKeys(req) => write!(f, "HKeys: {}", req),
                 ReadOperation::HVals(req) => write!(f, "HVals: {}", req),
+                ReadOperation::LLen(req) => write!(f, "HVals: {}", req),
             },
             Operation::Base(op) => match op {
                 BaseOperation::Empty => write!(f, "None"),
