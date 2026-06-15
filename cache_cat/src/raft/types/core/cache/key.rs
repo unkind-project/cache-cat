@@ -8,18 +8,18 @@ use crate::raft::types::core::mocha::cas::ComputeCommand;
 use crate::raft::types::core::mocha::mocha::{MyCache, MyValue, Update, UpdateType};
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::bae_operation::{
-    BaseOperation, DelReq, ExpireReq, InsertReq, PersistReq,
+    BaseOperation, DelReq, InsertReq, PExpireReq, PersistReq,
 };
 use crate::raft::types::entry::request::AtomicRequest;
 use std::sync::Arc;
 
-impl ComputeCommand for ExpireReq {
+impl ComputeCommand for PExpireReq {
     fn key(&self) -> Arc<Vec<u8>> {
         Arc::from(self.key.clone())
     }
 
     fn into_base_op(self) -> BaseOperation {
-        BaseOperation::Expire(self.clone())
+        BaseOperation::PExpire(self.clone())
     }
 
     fn mutate(
@@ -233,15 +233,23 @@ impl MyCache {
         Value::Integer(count)
     }
 
-    pub fn exists(&self, exists_params: ExistsParams, db_number: u16) -> Value {
+    pub fn exists(
+        &self,
+        exists_params: ExistsParams,
+        db_number: u16,
+        read_clock: Option<u64>,
+    ) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
         let mut count = 0;
         for key in exists_params.keys {
-            if cache.contains_key(&key) {
-                count += 1;
+            match cache.get_with_read_clock(&key, read_clock) {
+                None => {}
+                Some(_) => {
+                    count += 1;
+                }
             }
         }
         Value::Integer(count)
@@ -251,7 +259,7 @@ impl MyCache {
         self.execute_compute(persist, update)
     }
 
-    pub fn expire(&self, param: ExpireReq, update: &mut Update) -> Value {
+    pub fn p_expire(&self, param: PExpireReq, update: &mut Update) -> Value {
         self.execute_compute(param, update)
     }
 

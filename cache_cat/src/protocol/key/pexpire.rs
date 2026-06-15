@@ -1,5 +1,6 @@
 use crate::error::{CacheCatError, ProtocolError};
 use crate::protocol::command::{Client, Command};
+use crate::protocol::key::expire::ExpireCondition;
 use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
@@ -7,53 +8,40 @@ use crate::raft::types::entry::bae_operation::BaseOperation::PExpire;
 use crate::raft::types::entry::bae_operation::PExpireReq;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-/// Expire condition flags (NX, XX, GT, LT)
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ExpireCondition {
-    /// NX - Only set expiration if key has NO existing expiration
-    Nx,
-    /// XX - Only set expiration if key already HAS an expiration
-    Xx,
-    /// GT - Only set expiration if new TTL is GREATER than current TTL
-    Gt,
-    /// LT - Only set expiration if new TTL is LESS than current TTL
-    Lt,
-}
-
-/// EXPIRE command parameters
+/// PEXPIRE command parameters
 #[derive(Debug, Clone, PartialEq)]
-pub struct ExpireParams {
+pub struct PExpireParams {
     pub key: Vec<u8>,
-    pub seconds: u64,
+    pub milliseconds: u64,
     pub condition: Option<ExpireCondition>,
 }
 
-impl ExpireParams {
-    /// Parse EXPIRE command parameters from RESP array items
-    /// Format: EXPIRE key seconds [NX | XX | GT | LT]
+impl PExpireParams {
+    /// Parse PEXPIRE command parameters from RESP array items
+    ///
+    /// Format:
+    /// PEXPIRE key milliseconds [NX | XX | GT | LT]
     fn parse(items: &[Value]) -> Result<Self, ProtocolError> {
-        // Need at least: EXPIRE key seconds (3 items)
+        // Need at least: PEXPIRE key milliseconds
         if items.len() < 3 {
-            return Err(ProtocolError::WrongArgCount("expire"));
+            return Err(ProtocolError::WrongArgCount("pexpire"));
         }
 
-        let key: Vec<u8> = match &items[1] {
+        let key = match &items[1] {
             Value::BulkString(Some(data)) => data.clone(),
             Value::SimpleString(s) => s.as_bytes().to_vec(),
             _ => return Err(ProtocolError::InvalidArgument("key")),
         };
 
-        let seconds = parse_u64(&items[2]).ok_or(ProtocolError::NotAnInteger)?;
+        let milliseconds = parse_u64(&items[2]).ok_or(ProtocolError::NotAnInteger)?;
 
-        // Parse optional condition flag
         let condition = if items.len() >= 4 {
             let flag = match &items[3] {
                 Value::BulkString(Some(data)) => String::from_utf8_lossy(data).to_uppercase(),
                 Value::SimpleString(s) => s.to_uppercase(),
-                _ => return Err(ProtocolError::WrongArgCount("expire")),
+                _ => return Err(ProtocolError::WrongArgCount("pexpire")),
             };
 
             match flag.as_str() {
@@ -67,9 +55,9 @@ impl ExpireParams {
             None
         };
 
-        Ok(ExpireParams {
+        Ok(PExpireParams {
             key,
-            seconds,
+            milliseconds,
             condition,
         })
     }
@@ -85,15 +73,15 @@ fn parse_u64(value: &Value) -> Option<u64> {
     }
 }
 
-/// EXPIRE command executor
-pub struct ExpireCommand;
+/// PEXPIRE command executor
+pub struct PExpireCommand;
 
-impl RaftCommand for ExpireCommand {
+impl RaftCommand for PExpireCommand {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError> {
-        let params = ExpireParams::parse(items)?;
+        let params = PExpireParams::parse(items)?;
         let req = PExpireReq {
             key: Arc::from(params.key),
-            expires_at: params.seconds * 1000,
+            expires_at: params.milliseconds,
             condition: params.condition,
         };
         Ok(Operation::Base(PExpire(req)))
@@ -101,7 +89,7 @@ impl RaftCommand for ExpireCommand {
 }
 
 #[async_trait]
-impl Command for ExpireCommand {
+impl Command for PExpireCommand {
     async fn execute(
         &self,
         client: &mut Client,
@@ -110,10 +98,12 @@ impl Command for ExpireCommand {
     ) -> Result<Value, CacheCatError> {
         if let Some(vec) = client.transaction_queue.as_mut() {
             vec.push(self.raft_request(items)?);
+
             return Ok(Value::SimpleString(String::from("QUEUED")));
         }
         let operation = self.raft_request(items)?;
         let value = server.app.write(operation, client.db_number).await?;
+
         Ok(value)
     }
 }

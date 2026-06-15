@@ -75,6 +75,7 @@ use tokio::select;
 use tokio::sync::watch;
 use tokio_util::codec::Framed;
 use tracing::{error, warn};
+use crate::protocol::key::pexpire::PExpireCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -240,6 +241,7 @@ impl CommandFactory {
         factory.register("MGET", MgetCommand);
         factory.register("APPEND", AppendCommand);
         factory.register("EXPIRE", ExpireCommand);
+        factory.register("PEXPIRE", PExpireCommand);
         factory.register("EXISTS", ExistsCommand);
         factory.register("PERSIST", PersistCommand);
         factory.register("RENAME", RenameCommand);

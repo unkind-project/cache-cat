@@ -2,6 +2,7 @@ use crate::error::ProtocolError;
 use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
 use crate::protocol::NO_EXPIRATION;
 use crate::protocol::string::get::GetParams;
+use crate::protocol::string::len::StrLenParams;
 use crate::protocol::string::mget::MgetParams;
 use crate::protocol::string::mset::MsetParams;
 use crate::protocol::string::set::{Expiration, SetMode, SetParams};
@@ -9,12 +10,9 @@ use crate::raft::types::core::mocha::cas::ComputeCommand;
 use crate::raft::types::core::mocha::mocha::{MyCache, MyValue, Update};
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::core::value_object::ValueObject;
-use crate::raft::types::entry::bae_operation::{
-    AppendReq, BaseOperation, IncrReq, SetReq,
-};
+use crate::raft::types::entry::bae_operation::{AppendReq, BaseOperation, IncrReq, SetReq};
 use crate::utils::parse_i64;
 use std::sync::Arc;
-use crate::protocol::string::len::StrLenParams;
 
 impl ComputeCommand for SetReq {
     fn key(&self) -> Arc<Vec<u8>> {
@@ -174,9 +172,6 @@ impl ComputeCommand for AppendReq {
     }
 }
 
-
-
-
 impl MyCache {
     pub fn redis_mset(&self, params: MsetParams, update: &mut Update<'_>, external: bool) -> Value {
         if external {
@@ -236,7 +231,7 @@ impl MyCache {
             },
             None => NO_EXPIRATION, // No expiration
         };
-        
+
         if matches!(existing_key, ExistingKey::None) && (params.mode.is_some() || params.get) {
             let cache = match self.get_cache(update.db_number) {
                 Err(err) => return err,
@@ -246,7 +241,9 @@ impl MyCache {
                 None => { /* remains None */ }
                 Some(value) => {
                     existing_key = match value.value.data {
-                        ValueObject::Int(v) => ExistingKey::Data(Arc::from(v.to_string().into_bytes())),
+                        ValueObject::Int(v) => {
+                            ExistingKey::Data(Arc::from(v.to_string().into_bytes()))
+                        }
                         ValueObject::String(v) => ExistingKey::Data(v),
                         _ => ExistingKey::OtherType,
                     };
@@ -307,14 +304,14 @@ impl MyCache {
         }
     }
 
-    pub fn m_get(&self, param: MgetParams, db_number: u16) -> Value {
+    pub fn m_get(&self, param: MgetParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
         let mut results = Vec::with_capacity(param.keys.len());
         for key in param.keys {
-            results.push(match cache.get(&key) {
+            results.push(match cache.get_with_read_clock(&key, read_clock) {
                 None => Value::BulkString(None),
                 Some(v) => match v.data {
                     ValueObject::Int(int_value) => {
@@ -330,12 +327,12 @@ impl MyCache {
         Value::Array(Some(results))
     }
 
-    pub fn get(&self, param: GetParams, db_number: u16) -> Value {
+    pub fn get(&self, param: GetParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
-        match cache.get(&param.key) {
+        match cache.get_with_read_clock(&param.key, read_clock) {
             None => Value::BulkString(None),
             Some(v) => match v.data {
                 ValueObject::Int(int_value) => {
@@ -349,23 +346,21 @@ impl MyCache {
         }
     }
 
-
-    pub fn str_len(&self, param: StrLenParams, db_number: u16) -> Value {
+    pub fn str_len(&self, param: StrLenParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
-        let len = match cache.get(&param.key) {
+        let len = match cache.get_with_read_clock(&param.key, read_clock) {
             None => 0,
             Some(v) => match v.data {
                 ValueObject::String(ref bytes) => bytes.len(),
                 ValueObject::Int(ref i) => i.to_string().len(),
-                _ => return ProtocolError::WrongType.into() ,
+                _ => return ProtocolError::WrongType.into(),
             },
         };
-        Value::Integer(len as i64) 
+        Value::Integer(len as i64)
     }
-
 
     pub fn set(&self, param: SetReq, update: &mut Update) -> Value {
         self.execute_compute(param, update)

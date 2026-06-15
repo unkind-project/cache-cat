@@ -1,6 +1,7 @@
 use crate::error::ProtocolError;
 use crate::mocha::MochaOperation::Abort;
 use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
+use crate::protocol::list::llen::LLenParams;
 use crate::protocol::list::lrange::LRangeParams;
 use crate::raft::types::core::mocha::cas::ComputeCommand;
 use crate::raft::types::core::mocha::mocha::{MyCache, MyValue, Update};
@@ -10,7 +11,6 @@ use crate::raft::types::entry::bae_operation::{BaseOperation, LPopReq, LPushReq}
 use parking_lot::lock_api::Mutex;
 use std::collections::VecDeque;
 use std::sync::Arc;
-use crate::protocol::list::llen::LLenParams;
 
 impl ComputeCommand for LPushReq {
     fn key(&self) -> Arc<Vec<u8>> {
@@ -113,12 +113,12 @@ impl ComputeCommand for LPopReq {
 }
 
 impl MyCache {
-    pub fn l_range(&self, params: LRangeParams, db_number: u16) -> Value {
+    pub fn l_range(&self, params: LRangeParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
-        match cache.get(&params.key) {
+        match cache.get_with_read_clock(&params.key, read_clock) {
             None => Value::BulkString(None),
             Some(v) => match v.data {
                 ValueObject::List(list) => {
@@ -134,18 +134,16 @@ impl MyCache {
             },
         }
     }
-    pub fn l_len(&self, params: LLenParams, db_number: u16) -> Value {
+    pub fn l_len(&self, params: LLenParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
 
-        match cache.get(&params.key) {
+        match cache.get_with_read_clock(&params.key, read_clock) {
             None => Value::Integer(0),
             Some(v) => match v.data {
-                ValueObject::List(list) => {
-                    Value::Integer(list.lock().len() as i64)
-                }
+                ValueObject::List(list) => Value::Integer(list.lock().len() as i64),
                 _ => ProtocolError::WrongType.into(),
             },
         }

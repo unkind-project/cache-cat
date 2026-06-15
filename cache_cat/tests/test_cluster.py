@@ -1,3 +1,5 @@
+from time import sleep
+
 import redis
 
 r = redis.Redis(
@@ -57,7 +59,6 @@ print(r.hget('test16', 'test'))
 print(r.srem('test14', 'test'))
 print(r.smembers('test20'))
 
-
 key = "bitmap_test"
 r.setbit(key, 0, 1)
 # 设置第 7 位为 1
@@ -77,14 +78,13 @@ r.zadd("my_zset", {"a": 1, "b": 2, "c": 3})
 print(r.zrange("my_zset", 0, -1))
 print(r.zrangebyscore("my_zset", 1, 2))
 
-
 r.psetex(
     name="user:1",
     time_ms=50,
     value="Bella"
 )
 
-r.set("my_key","1111")
+r.set("my_key", "1111")
 # SETNX: 只有在key不存在时才设置
 result = r.setnx("my_key", 'my_value')
 
@@ -92,10 +92,9 @@ print(r.get("my_key"))
 
 r.renamenx("my_key", "my_key2")
 print(r.get("my_key2"))
-r.set("my_key2","测试test")
+r.set("my_key2", "测试test")
 
 print(r.strlen("my_key2"))
-
 
 r.hset('test2', 'test', 'test1')
 r.hset('test2', 'test2', 'test2')
@@ -104,11 +103,7 @@ print(r.hgetall('test3'))
 print(r.hkeys('test3'))
 print(r.hvals('test2'))
 
-
-print(r.mget(["test12","test12"]))
-
-
-
+print(r.mget(["test12", "test12"]))
 
 r.lpush("list test1", "test")
 print(r.llen("list test1"))
@@ -119,8 +114,11 @@ print(r.llen("list test1"))
 
 
 
-
-
+#
+r.set("test20", "test20")
+r.expire("test20", 1)
+sleep(0.5)
+print(r.get("test20"))
 
 
 

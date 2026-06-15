@@ -303,7 +303,7 @@ where
         self.enqueue_expiry(key, expire_at);
         snapshot
     }
-    
+
     fn remove_expired_if_current_from(
         map: &HashMap<K, Entry<V>>,
         logic_clock: &AtomicU64,
@@ -381,6 +381,35 @@ where
         Q: ?Sized + Hash + Ord,
     {
         self.get_entry(key).map(|entry| entry.value)
+    }
+    pub fn get_with_read_clock<Q>(&self, key: &Q, read_clock: Option<u64>) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: ?Sized + Hash + Ord,
+    {
+        match self.get_entry(key) {
+            None => {
+                //用写逻辑时钟也获取不到 可能会产生写逻辑时钟在此刻推进了导致读不到数据。但这是符合预期的。
+                None
+            }
+            Some(my_value) => {
+                match my_value.expire_at {
+                    Some(inner) => {
+                        match read_clock {
+                            None => Some(my_value.value),
+                            Some(time) => {
+                                if inner < time {
+                                    // 写逻辑时钟获取到了但是读逻辑时钟没有获取到
+                                    return None;
+                                }
+                                Some(my_value.value)
+                            }
+                        }
+                    }
+                    None => Some(my_value.value),
+                }
+            }
+        }
     }
 
     pub fn get_if_alive(&self, key: &K) -> Option<V> {

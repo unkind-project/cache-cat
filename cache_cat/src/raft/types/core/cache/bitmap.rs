@@ -102,12 +102,12 @@ impl ComputeCommand for SetBitReq {
 }
 
 impl MyCache {
-    pub fn get_bit(&self, param: GetBitParams, db_number: u16) -> Value {
+    pub fn get_bit(&self, param: GetBitParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
-        let bytes: Vec<u8> = match cache.get(&param.key) {
+        let bytes: Vec<u8> = match cache.get_with_read_clock(&param.key,read_clock) {
             None => return Value::Integer(0),
             Some(value) => match value.data {
                 ValueObject::String(s) => s.to_vec(),

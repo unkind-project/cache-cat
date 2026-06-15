@@ -119,8 +119,14 @@ impl CacheCatApp {
     }
     pub async fn read(&self, param: ReadOperation, db_number: u16) -> Result<Value, CacheCatError> {
         self.cluster.lease_read().await?;
+        let read_clock = self.state_machine.data.kvs.get_and_update_read_clock();
         let _read_lock = self.state_machine.data.kvs.read_lock.read();
-        Ok(read_request(&self.state_machine.data.kvs, param, db_number))
+        Ok(read_request(
+            &self.state_machine.data.kvs,
+            param,
+            db_number,
+            Some(read_clock),
+        ))
     }
 
     pub async fn multi_read(
@@ -129,9 +135,15 @@ impl CacheCatApp {
         db_number: u16,
     ) -> Result<Value, CacheCatError> {
         self.cluster.lease_read().await?;
+        let read_clock = self.state_machine.data.kvs.get_and_update_read_clock();
         let _write_lock = self.state_machine.data.kvs.write_lock.lock().await;
         let _read_lock = self.state_machine.data.kvs.read_lock.read();
-        Ok(read_request(&self.state_machine.data.kvs, param, db_number))
+        Ok(read_request(
+            &self.state_machine.data.kvs,
+            param,
+            db_number,
+            Some(read_clock),
+        ))
     }
 }
 

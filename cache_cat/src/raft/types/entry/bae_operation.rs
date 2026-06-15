@@ -11,7 +11,7 @@ pub enum BaseOperation {
     Empty,
     // key
     Del(DelReq),
-    Expire(ExpireReq),
+    PExpire(PExpireReq),
     Persist(PersistReq),
     Insert(InsertReq),
     //string
@@ -211,7 +211,7 @@ pub struct AppendReq {
     pub value: Arc<Vec<u8>>,
 }
 
-impl fmt::Display for AppendReq {
+impl Display for AppendReq {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -222,12 +222,12 @@ impl fmt::Display for AppendReq {
     }
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ExpireReq {
+pub struct PExpireReq {
     pub key: Arc<Vec<u8>>,
     pub expires_at: u64,
     pub condition: Option<ExpireCondition>,
 }
-impl fmt::Display for ExpireReq {
+impl Display for PExpireReq {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

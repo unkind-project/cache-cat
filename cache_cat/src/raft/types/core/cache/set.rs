@@ -123,12 +123,12 @@ impl ComputeCommand for SAddReq {
 }
 
 impl MyCache {
-    pub fn s_member(&self, param: SMembersParams, db_number: u16) -> Value {
+    pub fn s_member(&self, param: SMembersParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
-        match cache.get(&param.key) {
+        match cache.get_with_read_clock(&param.key,read_clock) {
             None => Value::Array(Some(vec![])),
             Some(v) => match v.data {
                 ValueObject::Set(set) => {

@@ -192,12 +192,12 @@ impl ComputeCommand for HDelReq {
 }
 
 impl MyCache {
-    pub fn h_m_get(&self, param: HMGetParams, db_number: u16) -> Value {
+    pub fn h_m_get(&self, param: HMGetParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
-        match cache.get(&param.key) {
+        match cache.get_with_read_clock(&param.key, read_clock) {
             None => Value::BulkString(None),
             Some(v) => match v.data {
                 ValueObject::Hash(map) => {
@@ -224,12 +224,12 @@ impl MyCache {
         }
     }
 
-    pub fn h_keys(&self, param: HKeysParams, db_number: u16) -> Value {
+    pub fn h_keys(&self, param: HKeysParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
-        match cache.get(&param.key) {
+        match cache.get_with_read_clock(&param.key,read_clock) {
             None => Value::Array(Some(vec![])),
             Some(v) => match v.data {
                 ValueObject::Hash(map) => {
@@ -245,12 +245,12 @@ impl MyCache {
         }
     }
 
-    pub fn h_vals(&self, param: HValsParams, db_number: u16) -> Value {
+    pub fn h_vals(&self, param: HValsParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
-        match cache.get(&param.key) {
+        match cache.get_with_read_clock(&param.key,read_clock) {
             None => Value::Array(Some(vec![])),
             Some(v) => match v.data {
                 ValueObject::Hash(map) => {
@@ -274,13 +274,13 @@ impl MyCache {
         }
     }
 
-    pub fn h_get_all(&self, param: HGetAllParams, db_number: u16) -> Value {
+    pub fn h_get_all(&self, param: HGetAllParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
-        match cache.get(&param.key) {
-            None => Value::Map(Vec::new()),  // 空 Map
+        match cache.get_with_read_clock(&param.key,read_clock) {
+            None => Value::Map(Vec::new()), // 空 Map
             Some(v) => match v.data {
                 ValueObject::Hash(map) => {
                     let guard = map.lock();
@@ -302,12 +302,12 @@ impl MyCache {
         }
     }
 
-    pub fn h_get(&self, param: HGetParams, db_number: u16) -> Value {
+    pub fn h_get(&self, param: HGetParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
-        match cache.get(&param.key) {
+        match cache.get_with_read_clock(&param.key,read_clock) {
             None => Value::BulkString(None),
             Some(v) => match v.data {
                 ValueObject::Hash(map) => {

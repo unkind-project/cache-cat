@@ -5,8 +5,8 @@ use crate::protocol::zset::zrangegetscore::ZRangeByScoreParams;
 use crate::raft::types::core::mocha::cas::ComputeCommand;
 use crate::raft::types::core::mocha::mocha::{MyCache, MyValue, Update};
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::core::value_object::ValueObject::ZSet;
 use crate::raft::types::core::value_object::SortedSet;
+use crate::raft::types::core::value_object::ValueObject::ZSet;
 use crate::raft::types::entry::bae_operation::{BaseOperation, ZAddReq};
 use parking_lot::Mutex;
 use std::sync::Arc;
@@ -57,12 +57,12 @@ impl ComputeCommand for ZAddReq {
 }
 
 impl MyCache {
-    pub fn z_range_by_score(&self, params: ZRangeByScoreParams, db_number: u16) -> Value {
+    pub fn z_range_by_score(&self, params: ZRangeByScoreParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
-        match cache.get(&params.key) {
+        match cache.get_with_read_clock(&params.key,read_clock) {
             None => Value::Array(Some(vec![])),
             Some(v) => match v.data {
                 ZSet(list) => {
@@ -85,13 +85,13 @@ impl MyCache {
         }
     }
 
-    pub fn z_range(&self, params: ZRangeParams, db_number: u16) -> Value {
+    pub fn z_range(&self, params: ZRangeParams, db_number: u16, read_clock: Option<u64>) -> Value {
         let cache = match self.get_cache(db_number) {
             Err(err) => return err,
             Ok(cache) => cache,
         };
-        match cache.get(&params.key) {
-            None => Value::Array(Some(vec![])),  // 空集合返回空数组
+        match cache.get_with_read_clock(&params.key, read_clock) {
+            None => Value::Array(Some(vec![])), // 空集合返回空数组
             Some(v) => match v.data {
                 ZSet(list) => {
                     let res = list
@@ -114,10 +114,7 @@ impl MyCache {
                                     Value::BulkString(Some(score_bytes))
                                 };
 
-                                pairs.push((
-                                    Value::BulkString(Some(member)),
-                                    score_value,
-                                ));
+                                pairs.push((Value::BulkString(Some(member)), score_value));
                             }
                         }
                         Value::Pairs(pairs)
