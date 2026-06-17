@@ -125,6 +125,7 @@ impl LuaEnv {
                         .map_err(|e| LuaError::external(e))?;
                     let value = do_request(cache, operation, update, false);
                     if let Value::Error(e) = value {
+                        // TODO: Bytes not UTF-8
                         return Err(match str::from_utf8(&e) {
                             Ok(e) => LuaError::external(e.to_string()),
                             Err(e) => LuaError::external(e),

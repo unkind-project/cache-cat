@@ -28,6 +28,7 @@ pub struct EvalShaParams {
 
 impl Display for EvalShaParams {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO: Bytes not UTF-8
         let sha1 = self.sha1().ok_or(std::fmt::Error)?;
         let sha1 = if self.sha1.len() > 20 {
             format_args!("{}...", &sha1[..20])

@@ -64,6 +64,7 @@ impl fmt::Display for ScriptParam {
                 write!(f, "LOAD {}", params.script().ok_or(fmt::Error)?)
             }
             ScriptParam::Exists(params) => {
+                // TODO: Bytes not UTF-8
                 let sha1s = params
                     .sha1s
                     .iter()

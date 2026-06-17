@@ -28,6 +28,7 @@ pub struct EvalParams {
 
 impl Display for EvalParams {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO: Bytes not UTF-8
         let script = self.script().ok_or(std::fmt::Error)?;
         let script = if self.script.len() > 20 {
             format_args!("{}...", &script[..20])

@@ -91,6 +91,7 @@ pub fn do_request(
                 let script = match str::from_utf8(&param.script) {
                     Ok(script) => script,
 
+                    // TODO: Bytes not UTF-8
                     Err(_) => return Value::Error(Bytes::from_static(b"script is not UTF-8")),
                 };
 

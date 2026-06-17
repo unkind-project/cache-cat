@@ -153,6 +153,7 @@ impl Value {
             Value::Error(e) => {
                 let table = lua.create_table()?;
 
+                // TODO: Bytes not UTF-8
                 let err = str::from_utf8(&e)?;
                 table.set("err", err)?;
                 Ok(mlua::Value::Table(table))
