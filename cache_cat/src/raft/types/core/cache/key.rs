@@ -6,6 +6,7 @@ use crate::protocol::key::rename::RenameParams;
 use crate::protocol::key::renamenx::RenameNxParams;
 use crate::raft::types::core::mocha::cas::ComputeCommand;
 use crate::raft::types::core::mocha::mocha::{MyCache, MyValue, Update, UpdateType};
+use crate::raft::types::core::mocha::read_command::MultiReadCommand;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::bae_operation::{
     BaseOperation, DelReq, InsertReq, PExpireReq, PersistReq,
@@ -142,6 +143,18 @@ impl ComputeCommand for InsertReq {
     }
 }
 
+impl MultiReadCommand for ExistsParams {
+    fn keys(&self) -> &Vec<Vec<u8>> {
+        &self.keys
+    }
+
+    fn execute(&self, values: Vec<Option<MyValue>>) -> Value {
+        let count = values.into_iter().filter(|value| value.is_some()).count();
+
+        Value::Integer(count as i64)
+    }
+}
+
 impl MyCache {
     pub fn redis_rename(
         &self,
@@ -239,20 +252,7 @@ impl MyCache {
         db_number: u16,
         read_clock: Option<u64>,
     ) -> Value {
-        let cache = match self.get_cache(db_number) {
-            Err(err) => return err,
-            Ok(cache) => cache,
-        };
-        let mut count = 0;
-        for key in exists_params.keys {
-            match cache.get_with_read_clock(&key, read_clock) {
-                None => {}
-                Some(_) => {
-                    count += 1;
-                }
-            }
-        }
-        Value::Integer(count)
+        self.execute_multi_read(exists_params, db_number, read_clock)
     }
 
     pub fn persist(&self, persist: PersistReq, update: &mut Update) -> Value {

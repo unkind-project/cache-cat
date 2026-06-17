@@ -8,7 +8,7 @@ use crate::protocol::string::mset::MsetParams;
 use crate::protocol::string::set::{Expiration, SetMode, SetParams};
 use crate::raft::types::core::mocha::cas::ComputeCommand;
 use crate::raft::types::core::mocha::mocha::{MyCache, MyValue, Update};
-use crate::raft::types::core::mocha::read_command::ReadCommand;
+use crate::raft::types::core::mocha::read_command::{MultiReadCommand, ReadCommand};
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::core::value_object::ValueObject;
 use crate::raft::types::entry::bae_operation::{AppendReq, BaseOperation, IncrReq, SetReq};
@@ -209,6 +209,34 @@ impl ReadCommand for StrLenParams {
     }
 }
 
+impl MultiReadCommand for MgetParams {
+    fn keys(&self) -> &Vec<Vec<u8>> {
+        &self.keys
+    }
+    fn execute(&self, values: Vec<Option<MyValue>>) -> Value {
+        let mut results = Vec::with_capacity(values.len());
+
+        for value in values {
+            results.push(match value {
+                None => Value::BulkString(None),
+
+                Some(v) => match v.data {
+                    ValueObject::Int(int_value) => {
+                        Value::BulkString(Some(int_value.to_string().into_bytes()))
+                    }
+
+                    ValueObject::String(str_value) => {
+                        Value::BulkString(Some(str_value.as_ref().clone()))
+                    }
+
+                    _ => ProtocolError::WrongType.into(),
+                },
+            });
+        }
+
+        Value::Array(Some(results))
+    }
+}
 impl MyCache {
     pub fn redis_mset(&self, params: MsetParams, update: &mut Update<'_>, external: bool) -> Value {
         if external {
@@ -342,26 +370,7 @@ impl MyCache {
     }
 
     pub fn m_get(&self, param: MgetParams, db_number: u16, read_clock: Option<u64>) -> Value {
-        let cache = match self.get_cache(db_number) {
-            Err(err) => return err,
-            Ok(cache) => cache,
-        };
-        let mut results = Vec::with_capacity(param.keys.len());
-        for key in param.keys {
-            results.push(match cache.get_with_read_clock(&key, read_clock) {
-                None => Value::BulkString(None),
-                Some(v) => match v.data {
-                    ValueObject::Int(int_value) => {
-                        Value::BulkString(Some(int_value.to_string().into_bytes()))
-                    }
-                    ValueObject::String(str_value) => {
-                        Value::BulkString(Some(str_value.as_ref().clone()))
-                    }
-                    _ => ProtocolError::WrongType.into(),
-                },
-            });
-        }
-        Value::Array(Some(results))
+        self.execute_multi_read(param, db_number, read_clock)
     }
 
     pub fn get(&self, param: GetParams, db_number: u16, read_clock: Option<u64>) -> Value {
