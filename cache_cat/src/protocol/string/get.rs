@@ -8,6 +8,9 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::raft::types::core::mocha::mocha::MyValue;
+use crate::raft::types::core::mocha::read_command::ReadCommand;
+use crate::raft::types::core::value_object::ValueObject;
 
 /// Parameters for GET command
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -37,6 +40,26 @@ impl GetParams {
         Ok(GetParams { key: key.into() })
     }
 }
+impl ReadCommand for GetParams {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn execute(&self, value: Option<MyValue>) -> Value {
+        match value {
+            None => Value::BulkString(None),
+            Some(v) => match v.data {
+                ValueObject::Int(int_value) => {
+                    Value::BulkString(Some(int_value.to_string().into_bytes()))
+                }
+                ValueObject::String(str_value) => {
+                    Value::BulkString(Some(str_value.as_ref().clone()))
+                }
+                _ => ProtocolError::WrongType.into(),
+            },
+        }
+    }
+}
 
 /// GET command executor
 pub struct GetCommand;
@@ -64,3 +87,4 @@ impl Command for GetCommand {
         server.app.read(params, client.db_number).await
     }
 }
+

@@ -13,6 +13,8 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::raft::types::core::mocha::mocha::MyValue;
+use crate::raft::types::core::mocha::read_command::MultiReadCommand;
 
 /// EXISTS command parameters
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -25,6 +27,19 @@ impl Display for ExistsParams {
         write!(f, "ExistsParams {{ keys: {:?} }}", self.keys)
     }
 }
+
+impl MultiReadCommand for ExistsParams {
+    fn keys(&self) -> &Vec<Bytes> {
+        &self.keys
+    }
+
+    fn execute(&self, values: Vec<Option<MyValue>>) -> Value {
+        let count = values.into_iter().filter(|value| value.is_some()).count();
+
+        Value::Integer(count as i64)
+    }
+}
+
 
 impl ExistsParams {
     /// Parse EXISTS command parameters from RESP array items

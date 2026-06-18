@@ -4,11 +4,11 @@ use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::bae_operation::BaseOperation::PExpire;
-use crate::raft::types::entry::bae_operation::PExpireReq;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
+use crate::protocol::key::pexpire::PExpireReq;
 
 /// Expire condition flags (NX, XX, GT, LT)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -11,15 +11,20 @@
 //! - `0` if the key does not exist or does not have an associated timeout
 
 use crate::error::{CacheCatError, ProtocolError};
+use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
 use crate::protocol::command::{Client, Command};
 use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
+use crate::raft::types::core::mocha::cas::ComputeCommand;
+use crate::raft::types::core::mocha::mocha::MyValue;
 use crate::raft::types::core::response_value::Value;
+use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::raft::types::entry::bae_operation::BaseOperation::Persist;
-use crate::raft::types::entry::bae_operation::PersistReq;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use bytes::Bytes;
+use serde::{Deserialize, Serialize};
+use std::fmt;
 
 /// PERSIST command parameters
 #[derive(Debug, Clone, PartialEq)]
@@ -70,5 +75,50 @@ impl Command for PersistCommand {
         let operation = self.raft_request(items)?;
         let value = server.app.write(operation, client.db_number).await?;
         Ok(value)
+    }
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PersistReq {
+    pub key: Bytes,
+}
+
+impl fmt::Display for PersistReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "PersistReq {{ key: {} }}",
+            String::from_utf8_lossy(&self.key)
+        )
+    }
+}
+
+impl ComputeCommand for PersistReq {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn into_base_op(self) -> BaseOperation {
+        BaseOperation::Persist(self.clone())
+    }
+
+    fn mutate(
+        self,
+        entry: EntrySnapshot<MyValue>,
+        _write_clock: u64,
+    ) -> (MochaOperation<MyValue>, Value) {
+        if entry.expire_at.is_none() {
+            return (MochaOperation::Abort, Value::Boolean(false));
+        }
+        (
+            MochaOperation::Insert {
+                value: entry.value.clone(),
+                expire: ExpirePolicy::Persistent,
+            },
+            Value::Boolean(true),
+        )
+    }
+
+    fn init(self) -> (MochaOperation<MyValue>, Value) {
+        (MochaOperation::Abort, Value::Boolean(false))
     }
 }

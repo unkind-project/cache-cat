@@ -1,14 +1,22 @@
 use crate::error::{CacheCatError, ProtocolError};
+use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
 use crate::protocol::command::{Client, Command};
 use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
+use crate::raft::types::core::mocha::cas::ComputeCommand;
+use crate::raft::types::core::mocha::mocha::MyValue;
 use crate::raft::types::core::response_value::Value;
+use crate::raft::types::core::value_object::ValueObject;
+use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::raft::types::entry::request::Operation;
 use crate::raft::types::entry::request::RedisOperation::RedisSet;
+use crate::utils::parse_i64;
 use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::fmt::Display;
+use std::sync::Arc;
 
 /// Expiration time options for SET command
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -213,5 +221,76 @@ impl Command for SetCommand {
             .write(Operation::Redis(RedisSet(params)), client.db_number)
             .await?;
         if get { Ok(value) } else { Ok(Value::ok()) }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SetReq {
+    pub key: Bytes,
+    pub value: Arc<Vec<u8>>,
+    pub ex_time: u64,
+}
+
+impl Display for SetReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "SetReq {{ key: {}, value: {}, ex_time: {} }}",
+            String::from_utf8_lossy(&self.key),
+            String::from_utf8_lossy(&self.value),
+            self.ex_time
+        )
+    }
+}
+
+impl ComputeCommand for SetReq {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn into_base_op(self) -> BaseOperation {
+        BaseOperation::Set(self.clone())
+    }
+
+    fn mutate(
+        self,
+        entry: EntrySnapshot<MyValue>,
+        _write_clock: u64,
+    ) -> (MochaOperation<MyValue>, Value) {
+        let new_version = entry.value.version + 1;
+        let data = match parse_i64(&self.value) {
+            None => ValueObject::String(self.value.clone()),
+            Some(v) => ValueObject::Int(v),
+        };
+        let expire = if self.ex_time == 0 {
+            ExpirePolicy::Persistent
+        } else {
+            ExpirePolicy::Absolute(self.ex_time)
+        };
+        let new_value = MyValue {
+            version: new_version,
+            data,
+        };
+        (
+            MochaOperation::Insert {
+                value: new_value,
+                expire,
+            },
+            Value::ok(),
+        )
+    }
+
+    fn init(self) -> (MochaOperation<MyValue>, Value) {
+        let data = match parse_i64(&self.value) {
+            None => ValueObject::String(self.value.clone()),
+            Some(v) => ValueObject::Int(v),
+        };
+        let expire = if self.ex_time == 0 {
+            ExpirePolicy::Persistent
+        } else {
+            ExpirePolicy::Absolute(self.ex_time)
+        };
+        let value = MyValue { version: 1, data };
+        (MochaOperation::Insert { value, expire }, Value::ok())
     }
 }

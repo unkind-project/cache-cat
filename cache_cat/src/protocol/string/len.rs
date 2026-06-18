@@ -8,6 +8,9 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::raft::types::core::mocha::mocha::MyValue;
+use crate::raft::types::core::mocha::read_command::ReadCommand;
+use crate::raft::types::core::value_object::ValueObject;
 
 /// Parameters for STRLEN command
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -37,8 +40,28 @@ impl StrLenParams {
     }
 }
 
+
 /// STRLEN command executor
 pub struct StrLenCommand;
+
+impl ReadCommand for StrLenParams {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn execute(&self, value: Option<MyValue>) -> Value {
+        let len = match value {
+            None => 0,
+            Some(v) => match v.data {
+                ValueObject::String(ref bytes) => bytes.len(),
+                ValueObject::Int(ref i) => i.to_string().len(),
+                _ => return ProtocolError::WrongType.into(),
+            },
+        };
+        Value::Integer(len as i64)
+    }
+}
+
 
 impl ReadRaftCommand for StrLenCommand {
     fn read_operation(&self, items: &[Value]) -> Result<ReadOperation, ProtocolError> {

@@ -1,14 +1,21 @@
+use std::fmt;
+use std::fmt::Display;
 use crate::error::{CacheCatError, ProtocolError};
 use crate::protocol::command::{Client, Command};
 use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::entry::bae_operation::AppendReq;
+use crate::raft::types::entry::bae_operation::{ BaseOperation};
 use crate::raft::types::entry::bae_operation::BaseOperation::Append;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use bytes::Bytes;
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
+use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
+use crate::raft::types::core::mocha::cas::ComputeCommand;
+use crate::raft::types::core::mocha::mocha::MyValue;
+use crate::raft::types::core::value_object::ValueObject;
 
 /// Parameters for APPEND command
 #[derive(Debug, Clone, PartialEq)]
@@ -75,5 +82,71 @@ impl Command for AppendCommand {
         let operation = self.raft_request(items)?;
         let value = server.app.write(operation, client.db_number).await?;
         Ok(value)
+    }
+}
+
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AppendReq {
+    pub key: Bytes,
+    pub value: Arc<Vec<u8>>,
+}
+
+impl Display for AppendReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "AppendReq {{ key: {}, value: {} }}",
+            String::from_utf8_lossy(&self.key),
+            String::from_utf8_lossy(&self.value)
+        )
+    }
+}
+
+impl ComputeCommand for AppendReq {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn into_base_op(self) -> BaseOperation {
+        BaseOperation::Append(self.clone())
+    }
+
+    fn mutate(
+        self,
+        entry: EntrySnapshot<MyValue>,
+        _write_clock: u64,
+    ) -> (MochaOperation<MyValue>, Value) {
+        match &entry.value.data {
+            ValueObject::String(data_arc) => {
+                // 构造新的字符串：原内容 + 追加内容
+                let mut new_buf = (**data_arc).clone();
+                new_buf.extend_from_slice(&self.value);
+                let len = new_buf.len() as i64;
+                let new_value = MyValue::new(ValueObject::String(Arc::new(new_buf)));
+                (
+                    MochaOperation::Insert {
+                        value: new_value,
+                        expire: entry.get_expire_policy(),
+                    },
+                    Value::Integer(len),
+                )
+            }
+            _ => (
+                MochaOperation::Abort,
+                Value::Error("Key exists but is not a String".to_string()),
+            ),
+        }
+    }
+
+    fn init(self) -> (MochaOperation<MyValue>, Value) {
+        let len = self.value.len() as i64;
+        (
+            MochaOperation::Insert {
+                value: MyValue::new(ValueObject::String(self.value)),
+                expire: ExpirePolicy::Persistent,
+            },
+            Value::Integer(len),
+        )
     }
 }

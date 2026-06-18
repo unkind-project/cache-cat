@@ -13,12 +13,12 @@ use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::bae_operation::BaseOperation::Del;
-use crate::raft::types::entry::bae_operation::DelReq;
 use crate::raft::types::entry::request::Operation;
 use crate::raft::types::entry::request::RedisOperation::RedisDel;
 use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::fmt::{Display, Formatter};
 
 /// DEL command parameters
@@ -88,5 +88,19 @@ impl Command for DelCommand {
         let operation = self.raft_request(items)?;
         let value = server.app.write(operation, client.db_number).await?;
         Ok(value)
+    }
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DelReq {
+    pub key: Bytes,
+}
+
+impl Display for DelReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "DelReq {{ key: {} }}",
+            String::from_utf8_lossy(&self.key)
+        )
     }
 }

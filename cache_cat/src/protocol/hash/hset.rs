@@ -9,17 +9,26 @@
 //! Note: This command uses atomic batch write to ensure all fields and metadata
 //! are written together as a single atomic operation.
 
+use std::collections::HashMap;
+use std::fmt;
 use crate::error::{CacheCatError, ProtocolError};
 use crate::protocol::command::{Client, Command};
 use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::bae_operation::BaseOperation::HSet;
-use crate::raft::types::entry::bae_operation::HSetReq;
+use crate::raft::types::entry::bae_operation::{BaseOperation};
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use bytes::Bytes;
 use std::sync::Arc;
+use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
+use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
+use crate::raft::types::core::mocha::cas::ComputeCommand;
+use crate::raft::types::core::mocha::mocha::MyValue;
+use crate::raft::types::core::value_object::{HashValue, ValueObject};
+use crate::utils::parse_i64;
 
 /// Parsed HSET arguments
 #[derive(Debug)]
@@ -109,5 +118,88 @@ impl Command for HSetCommand {
         let operation = self.raft_request(items)?;
         let value = server.app.write(operation, client.db_number).await?;
         Ok(value)
+    }
+}
+
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HSetReq {
+    pub key: Bytes,
+    pub elements: Vec<(Arc<Vec<u8>>, Arc<Vec<u8>>)>,
+}
+
+impl fmt::Display for HSetReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "HSetReq {{ key: {}, field: {:?} }}",
+            String::from_utf8_lossy(&self.key),
+            self.elements
+        )
+    }
+}
+
+
+impl ComputeCommand for HSetReq {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn into_base_op(self) -> BaseOperation {
+        BaseOperation::HSet(self.clone())
+    }
+
+    fn mutate(
+        self,
+        entry: EntrySnapshot<MyValue>,
+        _write_clock: u64,
+    ) -> (MochaOperation<MyValue>, Value) {
+        match &entry.value.data {
+            ValueObject::Hash(hash) => {
+                let mut count = 0;
+                let mut map = hash.lock();
+                for (k, v) in &self.elements {
+                    let value = parse_i64(v)
+                        .map(HashValue::Int)
+                        .unwrap_or_else(|| HashValue::Str(v.clone()));
+                    if map.insert(k.clone(), value).is_none() {
+                        count += 1;
+                    }
+                }
+                drop(map);
+                (
+                    MochaOperation::Insert {
+                        value: entry.value.clone(),
+                        expire: entry.get_expire_policy(),
+                    },
+                    Value::Integer(count),
+                )
+            }
+            _ => (
+                MochaOperation::Abort,
+                Value::Error(
+                    "WRONGTYPE Operation against a key holding the wrong kind of value".into(),
+                ),
+            ),
+        }
+    }
+
+    fn init(self) -> (MochaOperation<MyValue>, Value) {
+        let mut map = HashMap::new();
+        let len = self.elements.len();
+        for (k, v) in self.elements {
+            if let Some(int) = parse_i64(&v) {
+                map.insert(k.clone(), HashValue::Int(int));
+            } else {
+                map.insert(k.clone(), HashValue::Str(v.clone()));
+            }
+        }
+        (
+            MochaOperation::Insert {
+                value: MyValue::new(ValueObject::Hash(Arc::new(Mutex::new(map)))),
+                expire: ExpirePolicy::Persistent,
+            },
+            Value::Integer(len as i64),
+        )
     }
 }

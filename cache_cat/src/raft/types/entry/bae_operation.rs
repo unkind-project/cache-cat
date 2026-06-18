@@ -1,10 +1,24 @@
-use crate::protocol::key::expire::ExpireCondition;
+use crate::protocol::bitmap::setbit::SetBitReq;
+use crate::protocol::hash::hdel::HDelReq;
+use crate::protocol::hash::hincrby::HIncrReq;
+use crate::protocol::hash::hset::HSetReq;
+use crate::protocol::key::del::DelReq;
+use crate::protocol::key::persist::PersistReq;
+use crate::protocol::key::pexpire::PExpireReq;
+use crate::protocol::list::lpop::LPopReq;
+use crate::protocol::list::lpush::LPushReq;
+use crate::protocol::list::rpush::RPushReq;
+use crate::protocol::set::sadd::SAddReq;
+use crate::protocol::set::srem::SRemReq;
+use crate::protocol::string::append::AppendReq;
+use crate::protocol::string::incr::IncrReq;
+use crate::protocol::string::set::SetReq;
+use crate::protocol::zset::zadd::ZAddReq;
 use crate::raft::types::core::value_object::ValueObject;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
-use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BaseOperation {
@@ -34,92 +48,6 @@ pub enum BaseOperation {
     SAdd(SAddReq),
     SRem(SRemReq),
 }
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct RPushReq {
-    pub key: Bytes,
-    pub elements: Vec<Arc<Vec<u8>>>,
-}
-
-impl Display for RPushReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "RPushReq {{ key: {}, elements: {:?} }}",
-            String::from_utf8_lossy(&self.key),
-            self.elements
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct LPopReq {
-    pub key: Bytes,
-    pub count: u64,
-}
-
-impl Display for LPopReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "LPopReq {{ key: {}, count: {} }}",
-            String::from_utf8_lossy(&self.key),
-            self.count
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SetBitReq {
-    pub key: Bytes,
-    pub offset: u64,
-    pub value: u8,
-}
-
-impl Display for SetBitReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "SetBitReq {{ key: {}, offset: {}, value: {} }}",
-            String::from_utf8_lossy(&self.key),
-            self.offset,
-            self.value
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SRemReq {
-    pub key: Bytes,
-    pub members: Vec<Arc<Vec<u8>>>,
-}
-
-impl Display for SRemReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "SRemReq {{ key: {}, fields: {:?} }}",
-            String::from_utf8_lossy(&self.key),
-            self.members
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct HDelReq {
-    pub key: Bytes,
-    pub fields: Vec<Arc<Vec<u8>>>,
-}
-
-impl Display for HDelReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "HDelReq {{ key: {}, fields: {:?} }}",
-            String::from_utf8_lossy(&self.key),
-            self.fields
-        )
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct InsertReq {
@@ -136,204 +64,6 @@ impl Display for InsertReq {
             String::from_utf8_lossy(&self.key),
             self.value,
             self.expires_at
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PersistReq {
-    pub key: Bytes,
-}
-
-impl fmt::Display for PersistReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "PersistReq {{ key: {} }}",
-            String::from_utf8_lossy(&self.key)
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct HIncrReq {
-    pub key: Bytes,
-    pub field: Arc<Vec<u8>>,
-    pub value: i64,
-}
-
-impl fmt::Display for HIncrReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "HIncrReq {{ key: {}, field: {}, value: {} }}",
-            String::from_utf8_lossy(&self.key),
-            String::from_utf8_lossy(&self.field),
-            self.value
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SAddReq {
-    pub key: Bytes,
-    pub elements: Vec<Arc<Vec<u8>>>,
-}
-
-impl fmt::Display for SAddReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "SAddReq {{ key: {}, members: {:?} }}",
-            String::from_utf8_lossy(&self.key),
-            self.elements
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ZAddReq {
-    pub key: Bytes,
-    pub nx: bool,
-    pub xx: bool,
-    pub gt: bool,
-    pub lt: bool,
-    pub ch: bool,
-    pub members: Vec<(Arc<Vec<u8>>, f64)>,
-}
-
-impl fmt::Display for ZAddReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "ZAddReq {{ key: {}, nx: {}, xx: {}, gt: {}, lt: {}, ch: {}, members: {:?} }}",
-            String::from_utf8_lossy(&self.key),
-            self.nx,
-            self.xx,
-            self.gt,
-            self.lt,
-            self.ch,
-            self.members
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct HSetReq {
-    pub key: Bytes,
-    pub elements: Vec<(Arc<Vec<u8>>, Arc<Vec<u8>>)>,
-}
-
-impl fmt::Display for HSetReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "HSetReq {{ key: {}, field: {:?} }}",
-            String::from_utf8_lossy(&self.key),
-            self.elements
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AppendReq {
-    pub key: Bytes,
-    pub value: Arc<Vec<u8>>,
-}
-
-impl Display for AppendReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "AppendReq {{ key: {}, value: {} }}",
-            String::from_utf8_lossy(&self.key),
-            String::from_utf8_lossy(&self.value)
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PExpireReq {
-    pub key: Bytes,
-    pub expires_at: u64,
-    pub condition: Option<ExpireCondition>,
-}
-
-impl Display for PExpireReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "ExpireReq {{ key: {}, seconds: {}, condition: {:?} }}",
-            String::from_utf8_lossy(&self.key),
-            self.expires_at,
-            self.condition
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct IncrReq {
-    pub key: Bytes,
-    pub value: i64,
-}
-
-impl fmt::Display for IncrReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "IncrReq {{ key: {} }}",
-            String::from_utf8_lossy(&self.key)
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SetReq {
-    pub key: Bytes,
-    pub value: Arc<Vec<u8>>,
-    pub ex_time: u64,
-}
-
-impl Display for SetReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "SetReq {{ key: {}, value: {}, ex_time: {} }}",
-            String::from_utf8_lossy(&self.key),
-            String::from_utf8_lossy(&self.value),
-            self.ex_time
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct LPushReq {
-    pub key: Bytes,
-    pub elements: Vec<Arc<Vec<u8>>>,
-}
-
-impl Display for LPushReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "LPushReq {{ key: {}, elements: {:?} }}",
-            String::from_utf8_lossy(&self.key),
-            self.elements
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct DelReq {
-    pub key: Bytes,
-}
-
-impl Display for DelReq {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "DelReq {{ key: {} }}",
-            String::from_utf8_lossy(&self.key)
         )
     }
 }

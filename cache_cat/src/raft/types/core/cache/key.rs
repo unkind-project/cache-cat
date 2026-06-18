@@ -1,99 +1,16 @@
 use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
-use crate::protocol::key::del::DelParams;
+use crate::protocol::key::del::{DelParams, DelReq};
 use crate::protocol::key::exists::ExistsParams;
-use crate::protocol::key::expire::ExpireCondition;
 use crate::protocol::key::rename::RenameParams;
 use crate::protocol::key::renamenx::RenameNxParams;
 use crate::raft::types::core::mocha::cas::ComputeCommand;
 use crate::raft::types::core::mocha::mocha::{MyCache, MyValue, Update, UpdateType};
-use crate::raft::types::core::mocha::read_command::MultiReadCommand;
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::entry::bae_operation::{
-    BaseOperation, DelReq, InsertReq, PExpireReq, PersistReq,
-};
+use crate::raft::types::entry::bae_operation::{BaseOperation, InsertReq};
 use crate::raft::types::entry::request::AtomicRequest;
 use bytes::Bytes;
-
-impl ComputeCommand for PExpireReq {
-    fn key(&self) -> &Bytes {
-        &self.key
-    }
-
-    fn into_base_op(self) -> BaseOperation {
-        BaseOperation::PExpire(self.clone())
-    }
-
-    fn mutate(
-        self,
-        entry: EntrySnapshot<MyValue>,
-        write_clock: u64,
-    ) -> (MochaOperation<MyValue>, Value) {
-        let expires_at = self.expires_at + write_clock;
-        let should_update = match self.condition {
-            None => true,
-            Some(ref condition) => match condition {
-                ExpireCondition::Nx => entry.expire_at.is_none(),
-                ExpireCondition::Xx => entry.expire_at.is_some(),
-                ExpireCondition::Gt => {
-                    match entry.expire_at {
-                        None => false,                       // 无过期 = 无穷大，新过期不可能大于无穷大
-                        Some(expire) => expire < expires_at, // 旧 < 新，即新 > 旧
-                    }
-                }
-                ExpireCondition::Lt => {
-                    match entry.expire_at {
-                        None => true,                        // 无过期 = 无穷大，新过期一定小于无穷大
-                        Some(expire) => expire > expires_at, // 旧 > 新，即新 < 旧
-                    }
-                }
-            },
-        };
-        if !should_update {
-            return (MochaOperation::Abort, Value::Boolean(false));
-        }
-        (
-            MochaOperation::Insert {
-                value: entry.value.clone(),
-                expire: ExpirePolicy::Absolute(expires_at),
-            },
-            Value::Boolean(true),
-        )
-    }
-
-    fn init(self) -> (MochaOperation<MyValue>, Value) {
-        (MochaOperation::Abort, Value::Boolean(false))
-    }
-}
-impl ComputeCommand for PersistReq {
-    fn key(&self) -> &Bytes {
-        &self.key
-    }
-
-    fn into_base_op(self) -> BaseOperation {
-        BaseOperation::Persist(self.clone())
-    }
-
-    fn mutate(
-        self,
-        entry: EntrySnapshot<MyValue>,
-        _write_clock: u64,
-    ) -> (MochaOperation<MyValue>, Value) {
-        if entry.expire_at.is_none() {
-            return (MochaOperation::Abort, Value::Boolean(false));
-        }
-        (
-            MochaOperation::Insert {
-                value: entry.value.clone(),
-                expire: ExpirePolicy::Persistent,
-            },
-            Value::Boolean(true),
-        )
-    }
-
-    fn init(self) -> (MochaOperation<MyValue>, Value) {
-        (MochaOperation::Abort, Value::Boolean(false))
-    }
-}
+use crate::protocol::key::persist::PersistReq;
+use crate::protocol::key::pexpire::PExpireReq;
 
 impl ComputeCommand for InsertReq {
     fn key(&self) -> &Bytes {
@@ -142,19 +59,6 @@ impl ComputeCommand for InsertReq {
         (MochaOperation::Insert { value, expire }, Value::ok())
     }
 }
-
-impl MultiReadCommand for ExistsParams {
-    fn keys(&self) -> &Vec<Bytes> {
-        &self.keys
-    }
-
-    fn execute(&self, values: Vec<Option<MyValue>>) -> Value {
-        let count = values.into_iter().filter(|value| value.is_some()).count();
-
-        Value::Integer(count as i64)
-    }
-}
-
 impl MyCache {
     pub fn redis_rename(
         &self,

@@ -5,15 +5,23 @@
 //! Uses 0 as initial value if the field doesn't exist.
 
 use crate::error::{CacheCatError, ProtocolError};
+use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
 use crate::protocol::command::{Client, Command};
 use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
+use crate::raft::types::core::mocha::cas::ComputeCommand;
+use crate::raft::types::core::mocha::mocha::MyValue;
 use crate::raft::types::core::response_value::Value;
+use crate::raft::types::core::value_object::{HashValue, ValueObject};
+use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::raft::types::entry::bae_operation::BaseOperation::HIncr;
-use crate::raft::types::entry::bae_operation::HIncrReq;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use bytes::Bytes;
+use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fmt;
 use std::sync::Arc;
 
 /// Parsed HINCRBY arguments
@@ -97,5 +105,89 @@ impl Command for HIncrByCommand {
         let operation = self.raft_request(items)?;
         let value = server.app.write(operation, client.db_number).await?;
         Ok(value)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HIncrReq {
+    pub key: Bytes,
+    pub field: Arc<Vec<u8>>,
+    pub value: i64,
+}
+
+impl fmt::Display for HIncrReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "HIncrReq {{ key: {}, field: {}, value: {} }}",
+            String::from_utf8_lossy(&self.key),
+            String::from_utf8_lossy(&self.field),
+            self.value
+        )
+    }
+}
+
+impl ComputeCommand for HIncrReq {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn into_base_op(self) -> BaseOperation {
+        BaseOperation::HIncr(self.clone())
+    }
+
+    fn mutate(
+        self,
+        entry: EntrySnapshot<MyValue>,
+        _write_clock: u64,
+    ) -> (MochaOperation<MyValue>, Value) {
+        match &entry.value.data {
+            ValueObject::Hash(hash) => {
+                let mut map = hash.lock();
+                let result = match map.get(&self.field) {
+                    Some(HashValue::Int(int)) => {
+                        let new_int = *int + self.value;
+                        map.insert(self.field.clone(), HashValue::Int(new_int));
+                        Value::Integer(new_int)
+                    }
+                    Some(HashValue::Str(_)) => {
+                        return (
+                            MochaOperation::Abort,
+                            Value::Error("ERR hash value is not an integer".into()),
+                        );
+                    }
+                    None => {
+                        map.insert(self.field.clone(), HashValue::Int(self.value));
+                        Value::Integer(self.value)
+                    }
+                };
+                drop(map);
+                (
+                    MochaOperation::Insert {
+                        value: entry.value.clone(),
+                        expire: entry.get_expire_policy(),
+                    },
+                    result,
+                )
+            }
+            _ => (
+                MochaOperation::Abort,
+                Value::Error(
+                    "WRONGTYPE Operation against a key holding the wrong kind of value".into(),
+                ),
+            ),
+        }
+    }
+
+    fn init(self) -> (MochaOperation<MyValue>, Value) {
+        let mut map = HashMap::new();
+        map.insert(self.field, HashValue::Int(self.value));
+        (
+            MochaOperation::Insert {
+                value: MyValue::new(ValueObject::Hash(Arc::new(Mutex::new(map)))),
+                expire: ExpirePolicy::Persistent,
+            },
+            Value::Integer(self.value),
+        )
     }
 }

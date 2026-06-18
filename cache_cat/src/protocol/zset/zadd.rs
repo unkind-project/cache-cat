@@ -1,14 +1,21 @@
 use crate::error::{CacheCatError, ProtocolError};
+use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
 use crate::protocol::command::{Client, Command};
 use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
+use crate::raft::types::core::mocha::cas::ComputeCommand;
+use crate::raft::types::core::mocha::mocha::MyValue;
 use crate::raft::types::core::response_value::Value;
+use crate::raft::types::core::value_object::SortedSet;
+use crate::raft::types::core::value_object::ValueObject::ZSet;
+use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::raft::types::entry::bae_operation::BaseOperation::ZAdd;
-use crate::raft::types::entry::bae_operation::ZAddReq;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use bytes::Bytes;
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::fmt::Display;
 use std::sync::Arc;
 
@@ -190,5 +197,76 @@ impl Command for ZAddCommand {
         let operation = self.raft_request(items)?;
         let value = server.app.write(operation, client.db_number).await?;
         Ok(value)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ZAddReq {
+    pub key: Bytes,
+    pub nx: bool,
+    pub xx: bool,
+    pub gt: bool,
+    pub lt: bool,
+    pub ch: bool,
+    pub members: Vec<(Arc<Vec<u8>>, f64)>,
+}
+
+impl fmt::Display for ZAddReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "ZAddReq {{ key: {}, nx: {}, xx: {}, gt: {}, lt: {}, ch: {}, members: {:?} }}",
+            String::from_utf8_lossy(&self.key),
+            self.nx,
+            self.xx,
+            self.gt,
+            self.lt,
+            self.ch,
+            self.members
+        )
+    }
+}
+impl ComputeCommand for ZAddReq {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn into_base_op(self) -> BaseOperation {
+        BaseOperation::ZAdd(self.clone())
+    }
+
+    fn mutate(
+        self,
+        entry: EntrySnapshot<MyValue>,
+        _write_clock: u64,
+    ) -> (MochaOperation<MyValue>, Value) {
+        match &entry.value.data {
+            ZSet(zset) => {
+                let changed_count = zset.lock().zadd(self);
+                (
+                    MochaOperation::Insert {
+                        value: entry.value.clone(),
+                        expire: entry.get_expire_policy(),
+                    },
+                    Value::Integer(changed_count),
+                )
+            }
+            _ => (
+                MochaOperation::Abort,
+                Value::Error("zadd: key is not a zset".to_string()),
+            ),
+        }
+    }
+
+    fn init(self) -> (MochaOperation<MyValue>, Value) {
+        let mut set = SortedSet::new();
+        let changed_count = set.zadd(self);
+        (
+            MochaOperation::Insert {
+                value: MyValue::new(ZSet(Arc::new(Mutex::new(set)))),
+                expire: ExpirePolicy::Persistent,
+            },
+            Value::Integer(changed_count),
+        )
     }
 }

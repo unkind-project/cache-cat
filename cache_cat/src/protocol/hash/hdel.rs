@@ -12,15 +12,22 @@
 //! and metadata updates are written together as a single atomic operation.
 
 use crate::error::{CacheCatError, ProtocolError};
+use crate::mocha::{EntrySnapshot, MochaOperation};
 use crate::protocol::command::{Client, Command};
 use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
+use crate::raft::types::core::mocha::cas::ComputeCommand;
+use crate::raft::types::core::mocha::mocha::MyValue;
 use crate::raft::types::core::response_value::Value;
+use crate::raft::types::core::value_object::ValueObject;
+use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::raft::types::entry::bae_operation::BaseOperation::HDel;
-use crate::raft::types::entry::bae_operation::HDelReq;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use bytes::Bytes;
+use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::fmt::Display;
 use std::sync::Arc;
 
 /// Parsed HDEL arguments
@@ -94,5 +101,71 @@ impl Command for HDelCommand {
         let operation = self.raft_request(items)?;
         let value = server.app.write(operation, client.db_number).await?;
         Ok(value)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HDelReq {
+    pub key: Bytes,
+    pub fields: Vec<Arc<Vec<u8>>>,
+}
+
+impl Display for HDelReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "HDelReq {{ key: {}, fields: {:?} }}",
+            String::from_utf8_lossy(&self.key),
+            self.fields
+        )
+    }
+}
+
+impl ComputeCommand for HDelReq {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn into_base_op(self) -> BaseOperation {
+        BaseOperation::HDel(self.clone())
+    }
+
+    fn mutate(
+        self,
+        entry: EntrySnapshot<MyValue>,
+        _write_clock: u64,
+    ) -> (MochaOperation<MyValue>, Value) {
+        match &entry.value.data {
+            ValueObject::Hash(hash) => {
+                let mut map = hash.lock();
+                let mut deleted_count = 0;
+                for field in &self.fields {
+                    if map.remove(field).is_some() {
+                        deleted_count += 1;
+                    }
+                }
+                drop(map);
+                if deleted_count == 0 {
+                    return (MochaOperation::Abort, Value::Integer(0));
+                }
+                (
+                    MochaOperation::Insert {
+                        value: entry.value.clone(),
+                        expire: entry.get_expire_policy(),
+                    },
+                    Value::Integer(deleted_count),
+                )
+            }
+            _ => (
+                MochaOperation::Abort,
+                Value::Error(
+                    "WRONGTYPE Operation against a key holding the wrong kind of value".into(),
+                ),
+            ),
+        }
+    }
+
+    fn init(self) -> (MochaOperation<MyValue>, Value) {
+        (MochaOperation::Abort, Value::Integer(0))
     }
 }

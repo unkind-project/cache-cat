@@ -1,14 +1,20 @@
 use crate::error::{CacheCatError, ProtocolError};
+use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
 use crate::protocol::command::{Client, Command};
 use crate::protocol::key::expire::ExpireCondition;
 use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
+use crate::raft::types::core::mocha::cas::ComputeCommand;
+use crate::raft::types::core::mocha::mocha::MyValue;
 use crate::raft::types::core::response_value::Value;
+use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::raft::types::entry::bae_operation::BaseOperation::PExpire;
-use crate::raft::types::entry::bae_operation::PExpireReq;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use bytes::Bytes;
+use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::fmt::Display;
 
 /// PEXPIRE command parameters
 #[derive(Debug, Clone, PartialEq)]
@@ -105,5 +111,75 @@ impl Command for PExpireCommand {
         let value = server.app.write(operation, client.db_number).await?;
 
         Ok(value)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PExpireReq {
+    pub key: Bytes,
+    pub expires_at: u64,
+    pub condition: Option<ExpireCondition>,
+}
+
+impl Display for PExpireReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "ExpireReq {{ key: {}, seconds: {}, condition: {:?} }}",
+            String::from_utf8_lossy(&self.key),
+            self.expires_at,
+            self.condition
+        )
+    }
+}
+
+impl ComputeCommand for PExpireReq {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn into_base_op(self) -> BaseOperation {
+        BaseOperation::PExpire(self.clone())
+    }
+
+    fn mutate(
+        self,
+        entry: EntrySnapshot<MyValue>,
+        write_clock: u64,
+    ) -> (MochaOperation<MyValue>, Value) {
+        let expires_at = self.expires_at + write_clock;
+        let should_update = match self.condition {
+            None => true,
+            Some(ref condition) => match condition {
+                ExpireCondition::Nx => entry.expire_at.is_none(),
+                ExpireCondition::Xx => entry.expire_at.is_some(),
+                ExpireCondition::Gt => {
+                    match entry.expire_at {
+                        None => false,                       // 无过期 = 无穷大，新过期不可能大于无穷大
+                        Some(expire) => expire < expires_at, // 旧 < 新，即新 > 旧
+                    }
+                }
+                ExpireCondition::Lt => {
+                    match entry.expire_at {
+                        None => true,                        // 无过期 = 无穷大，新过期一定小于无穷大
+                        Some(expire) => expire > expires_at, // 旧 > 新，即新 < 旧
+                    }
+                }
+            },
+        };
+        if !should_update {
+            return (MochaOperation::Abort, Value::Boolean(false));
+        }
+        (
+            MochaOperation::Insert {
+                value: entry.value.clone(),
+                expire: ExpirePolicy::Absolute(expires_at),
+            },
+            Value::Boolean(true),
+        )
+    }
+
+    fn init(self) -> (MochaOperation<MyValue>, Value) {
+        (MochaOperation::Abort, Value::Boolean(false))
     }
 }

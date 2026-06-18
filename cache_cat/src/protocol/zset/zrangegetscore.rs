@@ -2,7 +2,10 @@ use crate::error::{CacheCatError, ProtocolError};
 use crate::protocol::command::{Client, Command};
 use crate::protocol::raft_command::ReadRaftCommand;
 use crate::raft::network::redis_server::RedisServer;
+use crate::raft::types::core::mocha::mocha::MyValue;
+use crate::raft::types::core::mocha::read_command::ReadCommand;
 use crate::raft::types::core::response_value::Value;
+use crate::raft::types::core::value_object::ValueObject::ZSet;
 use crate::raft::types::entry::read_operation::ReadOperation;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -36,6 +39,29 @@ pub struct ZRangeByScoreParams {
     pub limit: Option<(usize, usize)>, // (offset, count)
 }
 
+impl ReadCommand for ZRangeByScoreParams {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn execute(&self, value: Option<MyValue>) -> Value {
+        match value {
+            None => Value::Array(Some(vec![])),
+            Some(v) => match v.data {
+                ZSet(list) => {
+                    let zset = list.lock();
+                    let res = zset.zrangebyscore(self.min, self.max, self.with_scores, self.limit);
+                    let mut vec = Vec::with_capacity(res.len());
+                    for v in res {
+                        vec.push(Value::BulkString(Some(v)));
+                    }
+                    Value::Array(Some(vec))
+                }
+                _ => CacheCatError::from(ProtocolError::WrongType).into(),
+            },
+        }
+    }
+}
 impl Display for ZRangeByScoreParams {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(

@@ -4,10 +4,10 @@ use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::bae_operation::BaseOperation::Incr;
-use crate::raft::types::entry::bae_operation::IncrReq;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use bytes::Bytes;
+use crate::protocol::string::incr::IncrReq;
 
 /// Parameters for INCR command
 #[derive(Debug, Clone, PartialEq)]

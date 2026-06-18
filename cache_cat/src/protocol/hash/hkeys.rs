@@ -10,11 +10,13 @@ use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::read_operation::ReadOperation;
 use crate::raft::types::entry::request::Operation;
-
 use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
+use crate::raft::types::core::mocha::mocha::MyValue;
+use crate::raft::types::core::mocha::read_command::ReadCommand;
+use crate::raft::types::core::value_object::ValueObject;
 
 /// Parsed HKEYS arguments
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,7 +29,28 @@ impl Display for HKeysParams {
         write!(f, "HKEYS {}", String::from_utf8_lossy(&self.key))
     }
 }
+impl ReadCommand for HKeysParams {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
 
+    fn execute(&self, value: Option<MyValue>) -> Value {
+        match value {
+            None => Value::Array(Some(vec![])),
+            Some(v) => match v.data {
+                ValueObject::Hash(map) => {
+                    let guard = map.lock();
+                    let mut result = Vec::with_capacity(guard.len());
+                    for (field, _) in guard.iter() {
+                        result.push(Value::BulkString(Some(field.as_ref().clone())));
+                    }
+                    Value::Array(Some(result))
+                }
+                _ => CacheCatError::from(ProtocolError::WrongType).into(),
+            },
+        }
+    }
+}
 /// HKEYS command handler
 pub struct HKeysCommand;
 

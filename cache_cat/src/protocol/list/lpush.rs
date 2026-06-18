@@ -12,15 +12,24 @@
 //! `LPUSH mylist a b c` results in `[c, b, a]`.
 
 use crate::error::{CacheCatError, ProtocolError};
+use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
 use crate::protocol::command::{Client, Command};
 use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
+use crate::raft::types::core::mocha::cas::ComputeCommand;
+use crate::raft::types::core::mocha::mocha::MyValue;
 use crate::raft::types::core::response_value::Value;
+use crate::raft::types::core::value_object::ValueObject;
+use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::raft::types::entry::bae_operation::BaseOperation::LPush;
-use crate::raft::types::entry::bae_operation::LPushReq;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use bytes::Bytes;
+use parking_lot::lock_api::Mutex;
+use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
+use std::fmt;
+use std::fmt::Display;
 use std::sync::Arc;
 
 /// LPUSH command handler
@@ -96,5 +105,73 @@ impl Command for LPushCommand {
         let operation = self.raft_request(items)?;
         let value = server.app.write(operation, client.db_number).await?;
         Ok(value)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct LPushReq {
+    pub key: Bytes,
+    pub elements: Vec<Arc<Vec<u8>>>,
+}
+
+impl Display for LPushReq {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "LPushReq {{ key: {}, elements: {:?} }}",
+            String::from_utf8_lossy(&self.key),
+            self.elements
+        )
+    }
+}
+
+impl ComputeCommand for LPushReq {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn into_base_op(self) -> BaseOperation {
+        BaseOperation::LPush(self.clone())
+    }
+
+    fn mutate(
+        self,
+        entry: EntrySnapshot<MyValue>,
+        _write_clock: u64,
+    ) -> (MochaOperation<MyValue>, Value) {
+        match &entry.value.data {
+            ValueObject::List(data_arc) => {
+                let len = {
+                    let mut list = data_arc.lock();
+                    for element in self.elements {
+                        list.push_front(element);
+                    }
+                    list.len() as i64
+                };
+                (
+                    MochaOperation::Insert {
+                        value: entry.value.clone(),
+                        expire: entry.get_expire_policy(),
+                    },
+                    Value::Integer(len),
+                )
+            }
+            _ => (
+                MochaOperation::Abort,
+                Value::Error("Key exists but is not a List".to_string()),
+            ),
+        }
+    }
+
+    fn init(self) -> (MochaOperation<MyValue>, Value) {
+        let deque: VecDeque<_> = VecDeque::from(self.elements);
+        let len = deque.len() as i64;
+        (
+            MochaOperation::Insert {
+                value: MyValue::new(ValueObject::List(Arc::new(Mutex::new(deque)))),
+                expire: ExpirePolicy::Persistent,
+            },
+            Value::Integer(len),
+        )
     }
 }

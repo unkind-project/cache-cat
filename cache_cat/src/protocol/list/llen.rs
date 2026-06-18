@@ -2,7 +2,10 @@ use crate::error::{CacheCatError, ProtocolError};
 use crate::protocol::command::{Client, Command};
 use crate::protocol::raft_command::{RaftCommand, ReadRaftCommand};
 use crate::raft::network::redis_server::RedisServer;
+use crate::raft::types::core::mocha::mocha::MyValue;
+use crate::raft::types::core::mocha::read_command::ReadCommand;
 use crate::raft::types::core::response_value::Value;
+use crate::raft::types::core::value_object::ValueObject;
 use crate::raft::types::entry::read_operation::ReadOperation;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -39,6 +42,22 @@ impl LLenCommand {
         };
 
         Ok(LLenParams { key: key.into() })
+    }
+}
+
+impl ReadCommand for LLenParams {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn execute(&self, value: Option<MyValue>) -> Value {
+        match value {
+            None => Value::Integer(0),
+            Some(v) => match v.data {
+                ValueObject::List(list) => Value::Integer(list.lock().len() as i64),
+                _ => ProtocolError::WrongType.into(),
+            },
+        }
     }
 }
 

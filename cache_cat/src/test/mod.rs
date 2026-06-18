@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use crate::error::Error;
     use crate::raft::network::client::RpcMultiClient;
     use crate::raft::network::model::{GetReq, GetRes, PrintTestReq, PrintTestRes};
     use crate::raft::network::pipeline_client::{PipelineClient, PipelineMultiClient};
-    use crate::raft::types::entry::bae_operation::{BaseOperation, SetReq};
+    use crate::raft::types::entry::bae_operation::{BaseOperation};
     use crate::raft::types::entry::request::{Operation, Request};
     use crate::raft::types::raft_types::TypeConfig;
     use crate::utils::now_ms;
@@ -15,6 +14,7 @@ mod tests {
     use std::sync::Arc;
     use std::time::{Duration, Instant};
     use tokio::time;
+    use crate::protocol::string::set::SetReq;
 
     #[tokio::test]
     async fn test_add() {

@@ -8,6 +8,9 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::raft::types::core::mocha::mocha::MyValue;
+use crate::raft::types::core::mocha::read_command::ReadCommand;
+use crate::raft::types::core::value_object::ValueObject;
 
 pub struct SMembersCommand;
 
@@ -23,6 +26,29 @@ impl Display for SMembersParams {
             "SMembersParams {{ key: {} }}",
             String::from_utf8_lossy(&self.key)
         )
+    }
+}
+
+impl ReadCommand for SMembersParams {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn execute(&self, value: Option<MyValue>) -> Value {
+        match value {
+            None => Value::Array(Some(vec![])),
+            Some(v) => match v.data {
+                ValueObject::Set(set) => {
+                    let guard = set.lock();
+                    let mut array = Vec::new();
+                    for member in guard.iter() {
+                        array.push(Value::BulkString(Some(member.as_ref().clone())));
+                    }
+                    Value::Array(Some(array))
+                }
+                _ => ProtocolError::WrongType.into(),
+            },
+        }
     }
 }
 

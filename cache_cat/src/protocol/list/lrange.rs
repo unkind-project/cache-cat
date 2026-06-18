@@ -8,6 +8,9 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::raft::types::core::mocha::mocha::MyValue;
+use crate::raft::types::core::mocha::read_command::ReadCommand;
+use crate::raft::types::core::value_object::ValueObject;
 
 pub struct LRangeCommand;
 
@@ -27,6 +30,30 @@ impl Display for LRangeParams {
             self.start,
             self.stop
         )
+    }
+}
+
+impl ReadCommand for LRangeParams {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn execute(&self, value: Option<MyValue>) -> Value {
+        match value {
+            None => Value::BulkString(None),
+            Some(v) => match v.data {
+                ValueObject::List(list) => {
+                    let vec = crate::utils::lrange(&list.lock(), self.start, self.stop);
+                    let mut array = Vec::new();
+                    for x in vec {
+                        let value = Value::BulkString(Some(x.as_ref().clone()));
+                        array.push(value);
+                    }
+                    Value::Array(Some(array))
+                }
+                _ => ProtocolError::WrongType.into(),
+            },
+        }
     }
 }
 

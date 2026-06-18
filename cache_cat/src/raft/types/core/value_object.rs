@@ -1,9 +1,9 @@
-use crate::raft::types::entry::bae_operation::ZAddReq;
 use ordered_float::OrderedFloat;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::sync::Arc;
+use crate::protocol::zset::zadd::ZAddReq;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SortedSet {

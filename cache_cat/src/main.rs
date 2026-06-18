@@ -3,7 +3,6 @@ use cache_cat::config::cli_arg::load_config_with_cli;
 use cache_cat::config::config::Config;
 use cache_cat::node::raft_builder::RaftNodeBuilder;
 use cache_cat::raft::types::entry::bae_operation::BaseOperation::Set;
-use cache_cat::raft::types::entry::bae_operation::SetReq;
 use cache_cat::raft::types::entry::request::{Operation, Request};
 use cache_cat::raft::types::raft_types::CacheCatApp;
 use mimalloc::MiMalloc;
@@ -12,6 +11,7 @@ use std::sync::Arc;
 use tokio::signal;
 use tokio::time::sleep;
 use tracing::{error, info};
+use cache_cat::protocol::string::set::SetReq;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -26,7 +26,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .init();
 
     let (_raft_node, mut shutdown_rx) = RaftNodeBuilder::build(&config).await?;
-    // config.redis.redis_port;
     print_msg(&config);
     // if config.node_id == 1 {
     //     let app_clone = raft_node.app.clone();
