@@ -35,20 +35,17 @@ impl PExpireParams {
             return Err(ProtocolError::WrongArgCount("pexpire"));
         }
 
-        let key = match &items[1] {
-            Value::BulkString(Some(data)) => data.clone(),
-            Value::SimpleString(s) => s.as_bytes().to_vec(),
-            _ => return Err(ProtocolError::InvalidArgument("key")),
-        };
+        let key = items[1]
+            .string_bytes_clone()
+            .ok_or(ProtocolError::InvalidArgument("key"))?;
 
-        let milliseconds = parse_u64(&items[2]).ok_or(ProtocolError::NotAnInteger)?;
+        let milliseconds = items[2].try_parse_u64()?;
 
         let condition = if items.len() >= 4 {
-            let flag = match &items[3] {
-                Value::BulkString(Some(data)) => String::from_utf8_lossy(data).to_uppercase(),
-                Value::SimpleString(s) => s.to_uppercase(),
-                _ => return Err(ProtocolError::WrongArgCount("pexpire")),
-            };
+            let flag = items[3]
+                .as_str_lossy()
+                .ok_or(ProtocolError::WrongArgCount("pexpire"))?
+                .to_uppercase();
 
             match flag.as_str() {
                 "NX" => Some(ExpireCondition::Nx),
@@ -62,7 +59,7 @@ impl PExpireParams {
         };
 
         Ok(PExpireParams {
-            key: key.into(),
+            key,
             milliseconds,
             condition,
         })

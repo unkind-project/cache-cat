@@ -2,6 +2,7 @@ use crate::error::ProtocolError;
 use bytes::Bytes;
 use mlua::{Lua, Value as LuaValue};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
 /// A response from the KV store.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -275,6 +276,15 @@ impl Value {
         }
     }
 
+    #[inline]
+    pub fn as_str_lossy(&self) -> Option<Cow<'_, str>> {
+        match self {
+            Value::BulkString(Some(data)) => Some(String::from_utf8_lossy(data)),
+            Value::SimpleString(s) => Some(Cow::Borrowed(s)),
+            _ => None,
+        }
+    }
+
     // TODO: parse `u64` from value
     pub(crate) fn parse_u64(&self) -> Option<u64> {
         match self {
@@ -297,7 +307,7 @@ impl Value {
         match self {
             Value::BulkString(Some(data)) => String::from_utf8_lossy(data).parse::<i64>().ok(),
 
-            Value::SimpleString(s) => unsafe { str::from_utf8_unchecked(s) }.parse::<i64>().ok(),
+            Value::SimpleString(s) => s.parse::<i64>().ok(),
 
             Value::Integer(i) => Some(*i),
 
