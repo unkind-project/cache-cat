@@ -1,31 +1,31 @@
-use std::fmt;
-use std::fmt::Display;
 use crate::error::{CacheCatError, ProtocolError};
+use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
 use crate::protocol::command::{Client, Command};
 use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
+use crate::raft::types::core::mocha::cas::ComputeCommand;
+use crate::raft::types::core::mocha::mocha::MyValue;
 use crate::raft::types::core::response_value::Value;
-use crate::raft::types::entry::bae_operation::{ BaseOperation};
+use crate::raft::types::core::value_object::ValueObject;
+use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::raft::types::entry::bae_operation::BaseOperation::Append;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
 use bytes::Bytes;
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
-use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
-use crate::raft::types::core::mocha::cas::ComputeCommand;
-use crate::raft::types::core::mocha::mocha::MyValue;
-use crate::raft::types::core::value_object::ValueObject;
+use std::fmt;
+use std::fmt::Display;
+use std::sync::Arc;
 
 /// Parameters for APPEND command
 #[derive(Debug, Clone, PartialEq)]
 pub struct AppendParams {
     pub key: Bytes,
-    pub value: Vec<u8>,
+    pub value: Bytes,
 }
 
 impl AppendParams {
-    pub fn new(key: impl Into<Bytes>, value: impl Into<Vec<u8>>) -> Self {
+    pub fn new(key: impl Into<Bytes>, value: impl Into<Bytes>) -> Self {
         Self {
             key: key.into(),
             value: value.into(),
@@ -37,17 +37,13 @@ impl AppendParams {
             return Err(ProtocolError::WrongArgCount("APPEND"));
         }
 
-        let key: Vec<u8> = match &items[1] {
-            Value::BulkString(Some(data)) => data.clone(),
-            Value::SimpleString(s) => s.as_bytes().to_vec(),
-            _ => return Err(ProtocolError::InvalidArgument("key")),
-        };
+        let key = items[1]
+            .string_bytes_clone()
+            .ok_or(ProtocolError::InvalidArgument("key"))?;
 
-        let value = match &items[2] {
-            Value::BulkString(Some(data)) => data.clone(),
-            Value::SimpleString(s) => s.as_bytes().to_vec(),
-            _ => return Err(ProtocolError::InvalidArgument("value")),
-        };
+        let value = items[2]
+            .string_bytes_clone()
+            .ok_or(ProtocolError::InvalidArgument("value"))?;
 
         Ok(AppendParams::new(key, value))
     }
@@ -56,9 +52,10 @@ impl AppendParams {
 impl RaftCommand for AppendCommand {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError> {
         let params = AppendParams::parse(items)?;
+
         Ok(Operation::Base(Append(AppendReq {
             key: params.key,
-            value: Arc::from(params.value),
+            value: params.value,
         })))
     }
 }
@@ -85,11 +82,10 @@ impl Command for AppendCommand {
     }
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppendReq {
     pub key: Bytes,
-    pub value: Arc<Vec<u8>>,
+    pub value: Bytes,
 }
 
 impl Display for AppendReq {
