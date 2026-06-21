@@ -40,7 +40,6 @@ impl BLPopCommand {
             .collect::<Vec<_>>();
 
         if keys.len() < items.len() - 2 {
-            // TODO: Error Tag?
             return Err(ProtocolError::InvalidArgument("key"));
         }
 
