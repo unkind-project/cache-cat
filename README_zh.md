@@ -1,5 +1,11 @@
 # cache-cat
 
+<div align="center">
+<a href="https://github.com/nasuiyile/cache-cat/blob/master/README.md">English</a> ｜
+<a href="https://github.com/nasuiyile/cache-cat/blob/master/README_zh.md">简体中文</a>
+</div>
+
+
 ## 介绍
 
 cache-cat是一个高性能的键值对缓存库，同时使用Raft协议确保高可用的同时确保数据的强一致性。

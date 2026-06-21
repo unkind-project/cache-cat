@@ -1,5 +1,10 @@
 # Cache-Cat
 
+<div align="center">
+<a href="https://github.com/nasuiyile/cache-cat/blob/master/README.md">English</a> ｜
+<a href="https://github.com/nasuiyile/cache-cat/blob/master/README_zh.md">简体中文</a>
+</div>
+
 ## Introduction
 
 Cache-Cat is a high-performance key-value cache library that leverages the Raft consensus protocol to provide both high availability and strong consistency.
