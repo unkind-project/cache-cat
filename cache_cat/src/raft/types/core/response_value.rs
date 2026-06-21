@@ -292,4 +292,21 @@ impl Value {
     pub(crate) fn try_parse_u64(&self) -> Result<u64, ProtocolError> {
         self.parse_u64().ok_or(ProtocolError::NotAnInteger)
     }
+
+    pub(crate) fn parse_i64(&self) -> Option<i64> {
+        match self {
+            Value::BulkString(Some(data)) => String::from_utf8_lossy(data).parse::<i64>().ok(),
+
+            Value::SimpleString(s) => unsafe { str::from_utf8_unchecked(s) }.parse::<i64>().ok(),
+
+            Value::Integer(i) => Some(*i),
+
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn try_parse_i64(&self) -> Result<i64, ProtocolError> {
+        self.parse_i64().ok_or(ProtocolError::NotAnInteger)
+    }
 }
