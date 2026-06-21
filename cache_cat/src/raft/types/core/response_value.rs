@@ -1,6 +1,7 @@
+use crate::error::ProtocolError;
+use bytes::Bytes;
 use mlua::{Lua, Value as LuaValue};
 use serde::{Deserialize, Serialize};
-use crate::error::ProtocolError;
 
 /// A response from the KV store.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -160,10 +161,7 @@ impl Value {
                 let table = lua.create_table()?;
 
                 for (k, v) in map {
-                    table.set(
-                        k.into_lua_value(lua)?,
-                        v.into_lua_value(lua)?,
-                    )?;
+                    table.set(k.into_lua_value(lua)?, v.into_lua_value(lua)?)?;
                 }
                 Ok(mlua::Value::Table(table))
             }
@@ -179,7 +177,7 @@ impl Value {
             }
         }
     }
-    pub fn from_lua(lua_val: LuaValue, lua: &Lua) ->  Result<Value, ProtocolError>{
+    pub fn from_lua(lua_val: LuaValue, lua: &Lua) -> Result<Value, ProtocolError> {
         match lua_val {
             LuaValue::Nil | LuaValue::Boolean(false) => Ok(Value::BulkString(None)),
             LuaValue::Boolean(true) => Ok(Value::Integer(1)),
@@ -266,5 +264,32 @@ impl Value {
                 other
             ))),
         }
+    }
+
+    // TODO: Clone to `Bytes` from value
+    pub(crate) fn string_bytes_clone(&self) -> Option<Bytes> {
+        match self {
+            Value::BulkString(Some(data)) => Some(data.clone().into()),
+            Value::SimpleString(s) => Some(s.clone().into()),
+            _ => None,
+        }
+    }
+
+    // TODO: parse `u64` from value
+    pub(crate) fn parse_u64(&self) -> Option<u64> {
+        match self {
+            Value::BulkString(Some(data)) => String::from_utf8_lossy(data).parse::<u64>().ok(),
+
+            Value::SimpleString(s) => s.parse::<u64>().ok(),
+
+            Value::Integer(i) if *i >= 0 => Some(*i as u64),
+
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn try_parse_u64(&self) -> Result<u64, ProtocolError> {
+        self.parse_u64().ok_or(ProtocolError::NotAnInteger)
     }
 }
