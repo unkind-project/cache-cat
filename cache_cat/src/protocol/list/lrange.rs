@@ -44,11 +44,8 @@ impl ReadCommand for LRangeParams {
             Some(v) => match v.data {
                 ValueObject::List(list) => {
                     let vec = crate::utils::lrange(&list.lock(), self.start, self.stop);
-                    let mut array = Vec::new();
-                    for x in vec {
-                        let value = Value::BulkString(Some(x.as_ref().clone()));
-                        array.push(value);
-                    }
+                    let array = vec.into_iter().map(|v| Value::BulkString(Some(v))).collect::<Vec<_>>();
+
                     Value::Array(Some(array))
                 }
                 _ => ProtocolError::WrongType.into(),

@@ -3,6 +3,7 @@ use crate::protocol::raft_command::RaftCommandFactory;
 use crate::raft::types::core::mocha::mocha::{MyCache, Update};
 use crate::raft::types::core::mocha::request_handler::do_request;
 use crate::raft::types::core::response_value::Value;
+use bytes::Bytes;
 use lru::LruCache;
 use mlua::prelude::LuaError;
 use mlua::{HookTriggers, Lua, Value as LuaValue, Variadic, VmState};
@@ -75,8 +76,8 @@ impl LuaEnv {
         &self,
         cache: &MyCache,
         script: &str,
-        keys: &[Vec<u8>],
-        args: &[Vec<u8>],
+        keys: &[Bytes],
+        args: &[Bytes],
         update: &mut Update,
     ) -> Result<Value, ProtocolError> {
         self.interrupt_flag.store(false, Ordering::SeqCst);
@@ -165,7 +166,7 @@ impl LuaEnv {
             // ---- KEYS ----
             let keys_table = self.lua.create_table()?;
             for (i, key) in keys.iter().enumerate() {
-                let lua_key = self.lua.create_string(key.as_slice())?;
+                let lua_key = self.lua.create_string(key.as_ref())?;
                 keys_table.set(i + 1, lua_key)?;
             }
             self.lua.globals().set("KEYS", keys_table)?;
@@ -173,7 +174,7 @@ impl LuaEnv {
             // ---- ARGV ----
             let argv_table = self.lua.create_table()?;
             for (i, arg) in args.iter().enumerate() {
-                let lua_arg = self.lua.create_string(arg.as_slice())?;
+                let lua_arg = self.lua.create_string(arg.as_ref())?;
                 argv_table.set(i + 1, lua_arg)?;
             }
             self.lua.globals().set("ARGV", argv_table)?;

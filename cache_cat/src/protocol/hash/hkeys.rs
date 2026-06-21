@@ -42,7 +42,7 @@ impl ReadCommand for HKeysParams {
                     let guard = map.lock();
                     let mut result = Vec::with_capacity(guard.len());
                     for (field, _) in guard.iter() {
-                        result.push(Value::BulkString(Some(field.as_ref().clone())));
+                        result.push(Value::BulkString(Some(field.clone())));
                     }
                     Value::Array(Some(result))
                 }

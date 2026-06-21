@@ -136,7 +136,7 @@ impl ComputeCommand for LPopReq {
                             value: entry.value.clone(),
                             expire: entry.get_expire_policy(),
                         },
-                        Value::BulkString(Some((*value).clone())),
+                        Value::BulkString(Some(value)),
                     ),
                     None => (
                         MochaOperation::Insert {

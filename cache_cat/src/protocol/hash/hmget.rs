@@ -57,11 +57,9 @@ impl ReadCommand for HMGetParams {
                         .map(|field| match guard.get(field) {
                             None => Value::BulkString(None),
                             Some(value) => match value {
-                                HashValue::Str(str) => {
-                                    Value::BulkString(Some(str.as_ref().clone()))
-                                }
+                                HashValue::Str(str) => Value::BulkString(Some(str.clone())),
                                 HashValue::Int(int) => {
-                                    Value::BulkString(Some(int.to_string().as_bytes().to_vec()))
+                                    Value::BulkString(Some(int.to_string().into()))
                                 }
                             },
                         })

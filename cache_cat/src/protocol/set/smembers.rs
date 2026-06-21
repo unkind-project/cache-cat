@@ -40,10 +40,13 @@ impl ReadCommand for SMembersParams {
             Some(v) => match v.data {
                 ValueObject::Set(set) => {
                     let guard = set.lock();
-                    let mut array = Vec::new();
-                    for member in guard.iter() {
-                        array.push(Value::BulkString(Some(member.as_ref().clone())));
-                    }
+
+                    let array = guard
+                        .iter()
+                        .cloned()
+                        .map(|v| Value::BulkString(Some(v)))
+                        .collect::<Vec<_>>();
+
                     Value::Array(Some(array))
                 }
                 _ => ProtocolError::WrongType.into(),

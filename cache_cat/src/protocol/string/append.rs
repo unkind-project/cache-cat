@@ -11,11 +11,10 @@ use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::raft::types::entry::bae_operation::BaseOperation::Append;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
-use std::sync::Arc;
 
 /// Parameters for APPEND command
 #[derive(Debug, Clone, PartialEq)]
@@ -115,11 +114,12 @@ impl ComputeCommand for AppendReq {
     ) -> (MochaOperation<MyValue>, Value) {
         match &entry.value.data {
             ValueObject::String(data_arc) => {
-                // 构造新的字符串：原内容 + 追加内容
-                let mut new_buf = (**data_arc).clone();
+                // TODO: google translation
+                // Construct a new string: original content + appended content
+                let mut new_buf = BytesMut::from(data_arc.clone());
                 new_buf.extend_from_slice(&self.value);
                 let len = new_buf.len() as i64;
-                let new_value = MyValue::new(ValueObject::String(Arc::new(new_buf)));
+                let new_value = MyValue::new(ValueObject::String(new_buf.freeze()));
                 (
                     MochaOperation::Insert {
                         value: new_value,

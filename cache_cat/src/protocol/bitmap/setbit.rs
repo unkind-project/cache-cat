@@ -11,11 +11,10 @@ use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::raft::types::entry::bae_operation::BaseOperation::SetBit;
 use crate::raft::types::entry::request::Operation;
 use async_trait::async_trait;
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
-use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SetBitParams {
@@ -69,10 +68,10 @@ impl ComputeCommand for SetBitReq {
     ) -> (MochaOperation<MyValue>, Value) {
         // 获取字符串表示的字节数组
         let bytes = match &entry.value.data {
-            ValueObject::String(data_arc) => (**data_arc).clone(),
+            ValueObject::String(data_arc) => data_arc.clone(),
             ValueObject::Int(int_value) => {
                 // 整数转换为字符串表示
-                int_value.to_string().into_bytes()
+                int_value.to_string().into()
             }
             _ => {
                 return (
@@ -85,7 +84,8 @@ impl ComputeCommand for SetBitReq {
             }
         };
 
-        let mut bytes = bytes;
+        // TODO: BytesMut
+        let mut bytes = BytesMut::from(bytes);
         let offset = self.offset;
         let bit_value = self.value & 1; // Ensure only 0 or 1
 
@@ -109,7 +109,7 @@ impl ComputeCommand for SetBitReq {
             bytes[byte_index] = old_byte & !(1 << bit_position);
         }
 
-        let new_value = MyValue::new(ValueObject::String(Arc::new(bytes)));
+        let new_value = MyValue::new(ValueObject::String(bytes.freeze()));
         (
             MochaOperation::Insert {
                 value: new_value,
@@ -139,7 +139,7 @@ impl ComputeCommand for SetBitReq {
 
         (
             MochaOperation::Insert {
-                value: MyValue::new(ValueObject::String(Arc::new(bytes))),
+                value: MyValue::new(ValueObject::String(bytes.into())),
                 expire: ExpirePolicy::Persistent,
             },
             Value::Integer(0), // Original bit value is 0 for new key

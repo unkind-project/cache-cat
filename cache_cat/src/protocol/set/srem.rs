@@ -15,7 +15,6 @@ use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
-use std::sync::Arc;
 
 struct SRemArgs {
     key: Bytes,

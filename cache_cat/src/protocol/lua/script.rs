@@ -149,7 +149,7 @@ impl ScriptParam {
 /// 辅助函数：从 Value 提取字符串
 fn string_from_value(value: &Value, _context: &str) -> Result<String, ProtocolError> {
     match value {
-        Value::BulkString(Some(data)) => String::from_utf8(data.clone()).ok(),
+        Value::BulkString(Some(data)) => str::from_utf8(data).map(ToString::to_string).ok(),
         Value::SimpleString(s) => Some(s.clone()),
         _ => None,
     }
@@ -189,7 +189,7 @@ impl Command for ScriptCommand {
                     .lock()
                     .insert(sha1_hex.clone(), v.script);
 
-                Value::BulkString(Some(sha1_hex.into_bytes()))
+                Value::BulkString(Some(sha1_hex.into()))
             }
             ScriptParam::Exists(v) => {
                 let map = server.app.state_machine.data.kvs.lua_env.script_map.lock();

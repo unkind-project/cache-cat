@@ -49,11 +49,9 @@ impl ReadCommand for GetParams {
             None => Value::BulkString(None),
             Some(v) => match v.data {
                 ValueObject::Int(int_value) => {
-                    Value::BulkString(Some(int_value.to_string().into_bytes()))
+                    Value::BulkString(Some(int_value.to_string().into()))
                 }
-                ValueObject::String(str_value) => {
-                    Value::BulkString(Some(str_value.as_ref().clone()))
-                }
+                ValueObject::String(str_value) => Value::BulkString(Some(str_value)),
                 _ => ProtocolError::WrongType.into(),
             },
         }

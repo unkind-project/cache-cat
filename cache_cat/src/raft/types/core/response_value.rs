@@ -10,7 +10,7 @@ pub enum Value {
     SimpleString(String),
     Error(String),
     Integer(i64),
-    BulkString(Option<Vec<u8>>),
+    BulkString(Option<Bytes>),
     Array(Option<Vec<Value>>),
     /// Key-value mapping (RESP3: %N map, RESP2: flat array *2N)
     Map(Vec<(Value, Value)>),
@@ -185,12 +185,9 @@ impl Value {
             LuaValue::Integer(i) => Ok(Value::Integer(i)),
             LuaValue::Number(n) => {
                 // 浮点数统一转为 BulkString 形式，保持与 Redis 行为一致
-                Ok(Value::BulkString(Some(n.to_string().into_bytes())))
+                Ok(Value::BulkString(Some(n.to_string().into())))
             }
-            LuaValue::String(s) => {
-                let bytes = s.as_bytes().to_vec();
-                Ok(Value::BulkString(Some(bytes)))
-            }
+            LuaValue::String(s) => Ok(Value::BulkString(Some(s.as_bytes().to_vec().into()))),
             LuaValue::Table(t) => {
                 // 空表直接返回空数组
                 let pairs: Vec<(LuaValue, LuaValue)> = t.pairs().collect::<Result<Vec<_>, _>>()?;
