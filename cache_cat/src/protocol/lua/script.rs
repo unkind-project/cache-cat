@@ -82,11 +82,10 @@ impl ScriptParam {
         }
 
         // 子命令名
-        let sub_cmd = match &items[1] {
-            Value::BulkString(Some(data)) => String::from_utf8_lossy(data).to_uppercase(),
-            Value::SimpleString(s) => s.to_uppercase(),
-            _ => return Err(ProtocolError::InvalidArgument("script subcommand")),
-        };
+        let sub_cmd = items[1]
+            .as_str_lossy()
+            .ok_or(ProtocolError::InvalidArgument("script subcommand"))?
+            .to_uppercase();
 
         match sub_cmd.as_str() {
             "LOAD" => {
@@ -150,12 +149,11 @@ impl ScriptParam {
 /// 辅助函数：从 Value 提取字符串
 fn string_from_value(value: &Value, _context: &str) -> Result<String, ProtocolError> {
     match value {
-        Value::BulkString(Some(data)) => {
-            String::from_utf8(data.clone()).map_err(|_| ProtocolError::InvalidArgument("script"))
-        }
-        Value::SimpleString(s) => Ok(s.clone()),
-        _ => Err(ProtocolError::InvalidArgument("script")),
+        Value::BulkString(Some(data)) => String::from_utf8(data.clone()).ok(),
+        Value::SimpleString(s) => Some(s.clone()),
+        _ => None,
     }
+    .ok_or(ProtocolError::InvalidArgument("script"))
 }
 
 pub struct ScriptCommand;

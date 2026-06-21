@@ -319,4 +319,21 @@ impl Value {
     pub(crate) fn try_parse_i64(&self) -> Result<i64, ProtocolError> {
         self.parse_i64().ok_or(ProtocolError::NotAnInteger)
     }
+
+    pub(crate) fn parse_usize(&self) -> Option<usize> {
+        match self {
+            Value::BulkString(Some(data)) => String::from_utf8_lossy(data).parse::<usize>().ok(),
+
+            Value::SimpleString(s) => s.parse::<usize>().ok(),
+
+            Value::Integer(i) if *i >= 0 => Some(*i as usize),
+
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn try_parse_usize(&self) -> Result<usize, ProtocolError> {
+        self.parse_usize().ok_or(ProtocolError::NotAnInteger)
+    }
 }
