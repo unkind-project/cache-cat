@@ -22,6 +22,8 @@ use tokio::sync::{RwLock, mpsc};
 use tokio::time::timeout;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
+// TODO: Chinese transitions
+
 // --- 槽位管理器配置 ---
 const MAX_PENDING: usize = 65536; // 必须是 2 的幂
 const INDEX_MASK: u32 = (MAX_PENDING - 1) as u32;
@@ -190,9 +192,6 @@ impl RpcMultiClient {
             Err(_) => Err(RPCError::Timeout(err)),
         }
     }
-    
-    
-    
 
     fn decode_response<Res>(response_bytes: Bytes) -> Result<Res, RPCError<TypeConfig>>
     where

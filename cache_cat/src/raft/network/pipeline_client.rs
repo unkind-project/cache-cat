@@ -7,8 +7,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
-use tokio::sync::{mpsc, oneshot, RwLock};
+use tokio::sync::{RwLock, mpsc, oneshot};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
+
+// TODO: Chinese transitions
 
 // 按你的服务端实际类型导入
 use crate::raft::types::entry::request::Request;
@@ -136,12 +138,8 @@ impl PipelineMultiClient {
         })
     }
 
-    pub async fn call(
-        &self,
-        req: Request,
-    ) -> Result<ClientWriteResponse<TypeConfig>, String> {
-        let idx =
-            self.next.fetch_add(1, Ordering::Relaxed) as usize % self.clients.len();
+    pub async fn call(&self, req: Request) -> Result<ClientWriteResponse<TypeConfig>, String> {
+        let idx = self.next.fetch_add(1, Ordering::Relaxed) as usize % self.clients.len();
 
         // snapshot（避免长时间持锁）
         let client = {

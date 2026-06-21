@@ -22,6 +22,8 @@ use tokio_util::codec::{Framed, LengthDelimitedCodec};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
+// TODO: Chinese transitions
+
 pub struct Server {
     pub(crate) app: Arc<CacheCatApp>,
     pub addr: String,
@@ -35,8 +37,7 @@ impl Server {
         startup_tx: Sender<StdResult<(), String>>,
         redis_addr: String,
     ) -> Self {
-        let redis_server =
-            RedisServer::new(app.clone(), redis_addr);
+        let redis_server = RedisServer::new(app.clone(), redis_addr);
         Server {
             app: app.clone(),
             addr,
