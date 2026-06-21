@@ -42,7 +42,7 @@ impl PersistParams {
 
         let key = items[1]
             .string_bytes_clone()
-            .ok_or(ProtocolError::InvalidArgument("key"))?;
+            .ok_or(ProtocolError::WrongArgCount("key"))?;
 
         Ok(PersistParams { key })
     }
