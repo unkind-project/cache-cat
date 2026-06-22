@@ -34,7 +34,7 @@ impl StrLenParams {
             .string_bytes_clone()
             .ok_or(ProtocolError::InvalidArgument("key"))?;
 
-        Ok(Self { key: key.into() })
+        Ok(Self { key })
     }
 }
 

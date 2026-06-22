@@ -10,8 +10,6 @@ use tokio::net::TcpStream;
 use tokio::sync::{RwLock, mpsc, oneshot};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
-// TODO: Chinese transitions
-
 // 按你的服务端实际类型导入
 use crate::raft::types::entry::request::Request;
 use crate::raft::types::raft_types::TypeConfig;

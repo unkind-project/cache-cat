@@ -22,8 +22,6 @@ use tokio_util::codec::{Framed, LengthDelimitedCodec};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
-// TODO: Chinese transitions
-
 pub struct Server {
     pub(crate) app: Arc<CacheCatApp>,
     pub addr: String,

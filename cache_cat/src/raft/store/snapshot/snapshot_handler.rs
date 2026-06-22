@@ -213,7 +213,7 @@ async fn test_dump_and_load_with_data() {
     let key2 = Bytes::from_static(b"key2");
     let value2 = MyValue {
         version: 1,
-        data: ValueObject::String(Bytes::from_static(b"value2")), // TODO: Error Tag?
+        data: ValueObject::String(Bytes::from_static(b"value2")),
     };
 
     cache.databases[0]

@@ -46,10 +46,7 @@ impl SAddCommand {
             return Err(ProtocolError::InvalidArgument("member"));
         }
 
-        Ok(SAddArgs {
-            key: key.into(),
-            members,
-        })
+        Ok(SAddArgs { key, members })
     }
 }
 

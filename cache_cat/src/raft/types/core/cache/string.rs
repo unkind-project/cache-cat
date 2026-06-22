@@ -28,7 +28,6 @@ impl MyCache {
     }
 
     pub fn redis_set(&self, params: SetParams, update: &mut Update<'_>) -> Value {
-        // TODO: google translation
         // The latest write logic time
         let now = update.write_clock;
 
@@ -160,7 +159,8 @@ impl MyCache {
         self.execute_compute(param, update)
     }
 
-    //如果不是string就报错，如果是string就append，如果没有值就创建一个
+    // If it's not a string, report an error;
+    // if it's a string, append; if there's no value, create one
     pub fn append(&self, param: AppendReq, update: &mut Update) -> Value {
         self.execute_compute(param, update)
     }

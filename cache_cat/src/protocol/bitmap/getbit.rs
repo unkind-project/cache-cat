@@ -63,7 +63,7 @@ impl GetBitCommand {
 
         let key = items[1]
             .string_bytes_clone()
-            .ok_or(ProtocolError::InvalidArgument("rename"))?; // TODO?: Error Tag?
+            .ok_or(ProtocolError::InvalidArgument("getbit"))?;
 
         let offset = items[2].parse_u64().ok_or(ProtocolError::Custom(
             "ERR bit offset is not an integer or out of range",

@@ -33,11 +33,11 @@ impl RenameParams {
 
         let key = items[1]
             .string_bytes_clone()
-            .ok_or(ProtocolError::WrongArgCount("rename"))?;
+            .ok_or(ProtocolError::InvalidArgument("rename"))?;
 
         let new_key = items[2]
             .string_bytes_clone()
-            .ok_or(ProtocolError::WrongArgCount("rename"))?;
+            .ok_or(ProtocolError::InvalidArgument("rename"))?;
 
         Ok(RenameParams { key, new_key })
     }

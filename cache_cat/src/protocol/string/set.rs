@@ -16,7 +16,6 @@ use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
-use std::sync::Arc;
 
 /// Expiration time options for SET command
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -172,18 +171,6 @@ impl SetParams {
         }
 
         Ok(params)
-    }
-}
-
-/// Parse a Value as u64
-fn parse_u64(value: &Value) -> Result<u64, ProtocolError> {
-    match value {
-        Value::BulkString(Some(data)) => String::from_utf8_lossy(data)
-            .parse::<u64>()
-            .map_err(|_| ProtocolError::NotAnInteger),
-        Value::SimpleString(s) => s.parse::<u64>().map_err(|_| ProtocolError::NotAnInteger),
-        Value::Integer(i) if *i >= 0 => Ok(*i as u64),
-        _ => Err(ProtocolError::NotAnInteger),
     }
 }
 

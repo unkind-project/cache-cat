@@ -33,7 +33,7 @@ impl SetExCommand {
             value,
             mode: None,
             get: false,
-            // 秒转毫秒，继续复用 Px
+            // Convert seconds to milliseconds, continue reusing Px
             expiration: Some(Expiration::Px(seconds * 1000)),
         })
     }

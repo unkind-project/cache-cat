@@ -37,7 +37,7 @@ impl PExpireParams {
 
         let key = items[1]
             .string_bytes_clone()
-            .ok_or(ProtocolError::WrongArgCount("key"))?;
+            .ok_or(ProtocolError::InvalidArgument("key"))?;
 
         let milliseconds = items[2].try_parse_u64()?;
 
@@ -63,16 +63,6 @@ impl PExpireParams {
             milliseconds,
             condition,
         })
-    }
-}
-
-/// Parse a Value as u64
-fn parse_u64(value: &Value) -> Option<u64> {
-    match value {
-        Value::BulkString(Some(data)) => String::from_utf8_lossy(data).parse::<u64>().ok(),
-        Value::SimpleString(s) => s.parse::<u64>().ok(),
-        Value::Integer(i) if *i >= 0 => Some(*i as u64),
-        _ => None,
     }
 }
 

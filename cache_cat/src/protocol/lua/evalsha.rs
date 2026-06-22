@@ -91,7 +91,7 @@ impl EvalShaParams {
         for i in (3 + numkeys)..items.len() {
             let arg_value = &items[i];
             let arg = match arg_value {
-                Value::BulkString(Some(data)) => data.clone().into(),
+                Value::BulkString(Some(data)) => data.clone(),
                 Value::SimpleString(s) => s.clone().into(),
                 Value::Integer(i) => i.to_string().into(),
                 _ => return Err(ProtocolError::InvalidArgument("argument")),

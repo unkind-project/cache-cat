@@ -43,8 +43,7 @@ impl ReadCommand for SMembersParams {
 
                     let array = guard
                         .iter()
-                        .cloned()
-                        .map(|v| Value::BulkString(Some(v)))
+                        .map(|v| Value::BulkString(Some(v.clone())))
                         .collect::<Vec<_>>();
 
                     Value::Array(Some(array))

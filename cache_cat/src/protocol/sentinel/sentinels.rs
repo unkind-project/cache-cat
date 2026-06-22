@@ -26,7 +26,7 @@ impl SubCommand for SentinelSentinelsCommand {
             _ => return Err(ProtocolError::InvalidArgument("master name").into()),
         };
 
-        // master name 不匹配直接返回空数组
+        // If the master name does not match, return an empty array directly
         if server.app.config.sentinel_master_name != name {
             return Ok(Value::Array(None));
         }
@@ -35,7 +35,7 @@ impl SubCommand for SentinelSentinelsCommand {
         for (node_id, node) in nodes {
             let mut info = Vec::new();
             info.push(Value::BulkString(Some(Bytes::from_static(b"name"))));
-            //这里返回node_id作为哨兵的名字
+            // Here returns node_id as the name of the sentinel
             info.push(Value::BulkString(Some(node_id.to_string().into())));
 
             info.push(Value::BulkString(Some(Bytes::from_static(b"ip"))));

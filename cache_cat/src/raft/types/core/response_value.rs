@@ -184,19 +184,20 @@ impl Value {
             LuaValue::Boolean(true) => Ok(Value::Integer(1)),
             LuaValue::Integer(i) => Ok(Value::Integer(i)),
             LuaValue::Number(n) => {
-                // 浮点数统一转为 BulkString 形式，保持与 Redis 行为一致
+                // Convert floating-point numbers to BulkString format uniformly,
+                // maintaining consistency with Redis behavior
                 Ok(Value::BulkString(Some(n.to_string().into())))
             }
             LuaValue::String(s) => Ok(Value::BulkString(Some(s.as_bytes().to_vec().into()))),
             LuaValue::Table(t) => {
-                // 空表直接返回空数组
+                // Empty table directly returns an empty array
                 let pairs: Vec<(LuaValue, LuaValue)> = t.pairs().collect::<Result<Vec<_>, _>>()?;
 
                 if pairs.is_empty() {
                     return Ok(Value::Array(Some(Vec::new())));
                 }
 
-                // 检查是否为状态回复：{ ok = "..." } 或 { err = "..." }
+                // Check if it is a status reply: { ok = "..." } or { err = "..." }
                 if pairs.len() == 1 {
                     if let (LuaValue::String(key), value) = &pairs[0] {
                         if key.as_bytes() == b"ok" {
@@ -217,7 +218,7 @@ impl Value {
                     }
                 }
 
-                // 判断是否为纯数组（键为 1..n 的连续整数）
+                // Determine whether it is a pure array (continuous integers with keys 1..n)
                 let mut is_array = true;
                 let mut seen = vec![false; pairs.len()];
                 for (k, _) in &pairs {
@@ -233,7 +234,7 @@ impl Value {
                 is_array = is_array && seen.iter().all(|&b| b);
 
                 if is_array {
-                    // 按索引顺序组装数组
+                    // Assemble arrays in index order
                     let mut values = vec![LuaValue::Nil; pairs.len()];
                     for (k, v) in pairs {
                         if let LuaValue::Integer(idx) = k {
@@ -246,7 +247,7 @@ impl Value {
                     }
                     Ok(Value::Array(Some(redis_arr)))
                 } else {
-                    // 映射表 -> 扁平化键值对数组
+                    // Mapping Table -> Flatten Key Value Pair Array
                     let mut flat = Vec::with_capacity(pairs.len() * 2);
                     for (k, v) in pairs {
                         flat.push(Value::from_lua(k, lua)?);
@@ -255,7 +256,7 @@ impl Value {
                     Ok(Value::Array(Some(flat)))
                 }
             }
-            // 以下类型无法安全映射为 Redis 值，返回错误
+            // The following types cannot be securely mapped to Redis values, resulting in an error
             LuaValue::Error(err) => Ok(Value::Error(err.to_string())),
             other => Ok(Value::Error(format!(
                 "Cannot convert Lua value to Redis: {:?}",
@@ -264,10 +265,9 @@ impl Value {
         }
     }
 
-    // TODO: Clone to `Bytes` from value
     pub(crate) fn string_bytes_clone(&self) -> Option<Bytes> {
         match self {
-            Value::BulkString(Some(data)) => Some(data.clone().into()),
+            Value::BulkString(Some(data)) => Some(data.clone()),
             Value::SimpleString(s) => Some(s.clone().into()),
             _ => None,
         }
@@ -282,7 +282,6 @@ impl Value {
         }
     }
 
-    // TODO: parse `u64` from value
     pub(crate) fn parse_u64(&self) -> Option<u64> {
         match self {
             Value::BulkString(Some(data)) => String::from_utf8_lossy(data).parse::<u64>().ok(),
@@ -332,5 +331,33 @@ impl Value {
     #[inline]
     pub(crate) fn try_parse_usize(&self) -> Result<usize, ProtocolError> {
         self.parse_usize().ok_or(ProtocolError::NotAnInteger)
+    }
+
+    pub(crate) fn parse_bool_u8(&self) -> Option<u8> {
+        match self {
+            Value::BulkString(Some(data)) => {
+                if let Ok(v) = String::from_utf8_lossy(data).parse::<u8>()
+                    && v <= 1
+                {
+                    Some(v)
+                } else {
+                    None
+                }
+            }
+
+            Value::SimpleString(s) => {
+                if let Ok(v) = s.parse::<u8>()
+                    && v <= 1
+                {
+                    Some(v)
+                } else {
+                    None
+                }
+            }
+
+            Value::Integer(i) if matches!(*i, 0..=1) => Some(*i as u8),
+
+            _ => None,
+        }
     }
 }

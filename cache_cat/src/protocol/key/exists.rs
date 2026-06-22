@@ -56,7 +56,6 @@ impl ExistsParams {
             .collect::<Vec<_>>();
 
         if keys.len() < items.len() - 1 {
-            // TODO: Error Tag?
             return Err(ProtocolError::WrongArgCount("exists"));
         }
 

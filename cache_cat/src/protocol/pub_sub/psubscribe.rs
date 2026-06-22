@@ -47,7 +47,7 @@ impl PsubscribeParams {
             .collect::<Vec<_>>();
 
         if patterns.len() < items.len() - 1 {
-            return Err(ProtocolError::InvalidArgument("psubscribe"));
+            return Err(ProtocolError::WrongArgCount("psubscribe"));
         }
 
         Ok(PsubscribeParams { patterns })

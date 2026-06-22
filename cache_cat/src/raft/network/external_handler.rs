@@ -22,8 +22,6 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use tracing::info;
 
-// TODO: Chinese transitions
-
 pub type HandlerEntry = (u32, fn() -> Box<dyn RpcHandler>);
 
 pub static HANDLER_TABLE: &[HandlerEntry] = &[

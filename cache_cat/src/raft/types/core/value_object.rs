@@ -27,7 +27,7 @@ impl SortedSet {
             let old_score = self.hash.get(&member).cloned();
             let exists = old_score.is_some();
 
-            // 1. 处理 NX (只新增) / XX (只更新)
+            // 1. Processing NX (new only) / XX (updated only)
             if req.nx && exists {
                 continue;
             }
@@ -36,7 +36,7 @@ impl SortedSet {
             }
 
             if let Some(old_s) = old_score {
-                // 2. 处理 GT / LT
+                // 2. Processing GT / LT
                 if req.gt && score <= old_s {
                     continue;
                 }
@@ -44,18 +44,18 @@ impl SortedSet {
                     continue;
                 }
 
-                // 3. 执行更新
+                // 3. perform updates
                 if old_s != score {
-                    // 先从 tree 中移除旧的排序节点
+                    // Remove the old sorting nodes from the tree first
                     self.tree.remove(&(OrderedFloat(old_s), member.clone()));
-                    // 插入新的排序节点
+                    // Insert a new sorting node
                     self.tree.insert((OrderedFloat(score), member.clone()), ());
-                    // 更新哈希表
+                    // Update Hash Table
                     self.hash.insert(member.clone(), score);
                     changed += 1;
                 }
             } else {
-                // 4. 执行新增
+                // 4. Execute addition
                 self.tree.insert((OrderedFloat(score), member.clone()), ());
                 self.hash.insert(member.clone(), score);
                 added += 1;
@@ -71,10 +71,10 @@ impl SortedSet {
         if len == 0 {
             return vec![];
         }
-        // 1. 处理 Redis 负数索引逻辑
+        // 1. Handling Redis Negative Index Logic
         let mut start_idx = if start < 0 { len + start } else { start };
         let mut stop_idx = if stop < 0 { len + stop } else { stop };
-        // 边界修正
+        // Boundary correction
         if start_idx < 0 {
             start_idx = 0;
         }
@@ -85,20 +85,20 @@ impl SortedSet {
             return vec![];
         }
         let count = (stop_idx - start_idx + 1) as usize;
-        // 2. 预分配空间以提高性能
-        // 如果带分数，空间翻倍
+        // 2. Pre allocate space to improve performance
+        // If scores are included, the space doubles
         let result_capacity = if with_scores { count * 2 } else { count };
         let mut result = Vec::with_capacity(result_capacity);
 
-        // 3. 迭代 BTreeMap 提取数据
-        // tree 的顺序已经是 (Score, Member) 排序好的
+        // 3. Iterate BTreeMap to extract data
+        // The order of the tree is already sorted by (Score, Member)
         let range_iter = self.tree.keys().skip(start_idx as usize).take(count);
 
         for (score, member) in range_iter {
-            // 插入成员
+            // Insert member
             result.push(member.clone());
 
-            // 如果需要分数，将 f64 转换为字符串字节
+            // If scores are required, convert f64 to string bytes
             if with_scores {
                 result.push(score.0.to_string().into())
             }
@@ -120,8 +120,8 @@ impl SortedSet {
         let min_score = OrderedFloat(min);
         let max_score = OrderedFloat(max);
 
-        // 直接遍历整个 BTreeMap，在迭代中进行分数过滤
-        // 这样避免了边界值问题，且不需要 collect
+        // Traverse the entire BTreeMap directly and perform score filtering during iterations
+        // This avoids boundary value problems and does not require collection
         let skip_count = limit.map(|(offset, _)| offset).unwrap_or(0);
         let take_count = limit.map(|(_, count)| count).unwrap_or(usize::MAX);
 
@@ -181,7 +181,7 @@ pub enum ValueObject {
     Set(Arc<Mutex<HashSet<Bytes>>>),
 }
 
-// 通用序列化宏
+// Universal serialization macro
 macro_rules! impl_mutex_serde {
     ($mod_name:ident, $inner_type:ty) => {
         mod $mod_name {

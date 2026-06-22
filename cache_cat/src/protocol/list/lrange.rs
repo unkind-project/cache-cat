@@ -44,7 +44,10 @@ impl ReadCommand for LRangeParams {
             Some(v) => match v.data {
                 ValueObject::List(list) => {
                     let vec = crate::utils::lrange(&list.lock(), self.start, self.stop);
-                    let array = vec.into_iter().map(|v| Value::BulkString(Some(v))).collect::<Vec<_>>();
+                    let array = vec
+                        .into_iter()
+                        .map(|v| Value::BulkString(Some(v)))
+                        .collect::<Vec<_>>();
 
                     Value::Array(Some(array))
                 }
@@ -68,18 +71,6 @@ impl LRangeCommand {
         let stop = items[3].try_parse_i64()?;
 
         Ok(LRangeParams { key, start, stop })
-    }
-}
-
-fn parse_i64(value: &Value) -> Result<i64, ProtocolError> {
-    match value {
-        Value::BulkString(Some(data)) => {
-            let s = String::from_utf8_lossy(data);
-            s.parse::<i64>().map_err(|_| ProtocolError::NotAnInteger)
-        }
-        Value::SimpleString(s) => s.parse::<i64>().map_err(|_| ProtocolError::NotAnInteger),
-        Value::Integer(n) => Ok(*n),
-        _ => Err(ProtocolError::NotAnInteger),
     }
 }
 

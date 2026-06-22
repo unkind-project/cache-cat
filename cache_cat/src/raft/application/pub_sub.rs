@@ -4,22 +4,21 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::{RwLock, watch};
 
-// TODO: Chinese transitions
-
-// 客户端状态
+// Client status
 struct ClientState {
     sender: watch::Sender<Option<Value>>,
-    // 记录该客户端订阅了哪些频道，用于退订所有频道时清理
+    // Record which channels the client has subscribed to,
+    // and clear them when unsubscribing all channels
     subscribed_channels: HashSet<Bytes>,
     subscribed_patterns: HashSet<Bytes>,
 }
 
 pub struct PubSub {
-    /// 精确频道订阅：频道 -> 订阅的客户端ID集合
+    /// Precise channel subscription: Channel -> Collection of subscribed client IDs
     subs: Arc<RwLock<HashMap<Bytes, HashSet<u64>>>>,
-    /// 模式订阅：模式 -> 订阅的客户端ID集合
+    /// Mode subscription: Mode -> Collection of subscribed client IDs
     patterns: Arc<RwLock<HashMap<Bytes, HashSet<u64>>>>,
-    /// 客户端状态管理：client_id -> ClientState
+    /// Client State Management: client_id -> ClientState
     clients: Arc<RwLock<HashMap<u64, ClientState>>>,
 }
 
@@ -32,7 +31,7 @@ impl PubSub {
         }
     }
 
-    /// 为客户端获取或创建状态，并返回新的 Receiver
+    /// Retrieve or create status for the client and return a new Receiver
     async fn get_or_create_client(&self, client_id: u64) -> watch::Receiver<Option<Value>> {
         let mut clients = self.clients.write().await;
         let state = clients.entry(client_id).or_insert_with(|| {
@@ -43,12 +42,12 @@ impl PubSub {
                 subscribed_patterns: HashSet::new(),
             }
         });
-        // watch::Sender 可以通过 subscribe() 方法创建新的 Receiver
-        // 所有通过 subscribe() 创建的 Receiver 都会收到后续的消息
+        // watch::Sender can create a new Receiver using the subscribe() method
+        // All receivers created through subscribe() will receive subsequent messages
         state.sender.subscribe()
     }
 
-    /// 订阅多个精确频道
+    /// Subscribe to multiple precise channels
     pub async fn subscribe(
         &self,
         channels: Vec<Bytes>,
@@ -64,7 +63,7 @@ impl PubSub {
             }
         }
 
-        // 记录该客户端订阅了这些频道
+        // Record that the client subscribed to these channels
         {
             let mut clients = self.clients.write().await;
             if let Some(state) = clients.get_mut(&client_id) {
@@ -78,7 +77,7 @@ impl PubSub {
         (aggregated_resp, rx)
     }
 
-    /// 订阅单个精确频道
+    /// Subscribe to a single precise channel
     async fn subscribe_single(&self, channel: Bytes, client_id: u64) -> Value {
         let mut subs = self.subs.write().await;
         subs.entry(channel.clone()).or_default().insert(client_id);
@@ -91,7 +90,7 @@ impl PubSub {
         ]))
     }
 
-    /// 退订多个精确频道
+    /// Unsubscribe from multiple precise channels
     pub async fn unsubscribe(&self, channels: Vec<Bytes>, client_id: u64) -> Value {
         let mut responses = Vec::new();
         for channel in &channels {
@@ -101,14 +100,16 @@ impl PubSub {
             }
         }
 
-        // 从客户端状态中移除这些频道的记录，并在无订阅时清理
+        // Remove the records of these channels from the client state and
+        // clean them up when there are no subscriptions
         {
             let mut clients = self.clients.write().await;
             if let Some(state) = clients.get_mut(&client_id) {
                 for channel in &channels {
                     state.subscribed_channels.remove(channel);
                 }
-                // 如果该客户端不再有任何订阅，发送关闭信号并清理
+                // If the client no longer has any subscriptions,
+                // send a close signal and clear it
                 Self::cleanup_client_if_empty(&mut clients, client_id);
             }
         }
@@ -116,7 +117,7 @@ impl PubSub {
         Value::Array(Some(responses))
     }
 
-    /// 退订单个精确频道
+    /// Unsubscribe from a single precise channel
     async fn unsubscribe_single(&self, channel: Bytes, client_id: u64) -> Value {
         let mut subs = self.subs.write().await;
         match subs.get_mut(&channel) {
@@ -127,8 +128,10 @@ impl PubSub {
                     subs.remove(&channel);
                 }
 
-                // 修复：如果客户端实际订阅了这个频道，返回移除前的计数
-                // 如果没有订阅（不应该发生，但做防护），返回 0
+                // Fix: If the client actually subscribed to this channel,
+                // return the count before removal.
+                // If there is no subscription (which should not occur,
+                // but should be protected), return 0.
                 Value::Array(Some(vec![
                     Value::SimpleString("unsubscribe".to_string()),
                     Value::BulkString(Some(channel)),
@@ -143,11 +146,11 @@ impl PubSub {
         }
     }
 
-    /// 退订客户端的所有精确频道
+    /// Unsubscribe all precise channels of the client
     pub async fn unsubscribe_all_channels(&self, client_id: u64) -> Value {
         let mut responses = Vec::new();
 
-        // 获取该客户端订阅的所有频道
+        // Get all channels subscribed to by the client
         let channels = {
             let clients = self.clients.read().await;
             clients
@@ -162,7 +165,7 @@ impl PubSub {
                 .unwrap_or_default()
         };
 
-        // 退订所有频道
+        // Unsubscribe from all channels
         let mut subs = self.subs.write().await;
         for channel in &channels {
             if let Some(set) = subs.get_mut(channel) {
@@ -180,12 +183,12 @@ impl PubSub {
         }
         drop(subs);
 
-        // 清理客户端状态，如果没有任何订阅则发送关闭信号
+        // Clear the client status and send a close signal if there are no subscriptions
         {
             let mut clients = self.clients.write().await;
             if let Some(state) = clients.get_mut(&client_id) {
                 state.subscribed_channels.clear();
-                // 只有在模式也为空时才清理，否则保留模式订阅
+                // Only clear when the mode is also empty, otherwise keep the mode subscription
                 Self::cleanup_client_if_empty(&mut clients, client_id);
             }
         }
@@ -193,7 +196,7 @@ impl PubSub {
         Value::Array(Some(responses))
     }
 
-    /// 订阅多个模式
+    /// Subscribe to multiple modes
     pub async fn psubscribe(
         &self,
         patterns: Vec<Bytes>,
@@ -204,13 +207,13 @@ impl PubSub {
         let mut responses = Vec::new();
         for pattern in &patterns {
             let resp = self.psubscribe_single(pattern.clone(), client_id).await;
-            // 修复：使用 append 展开数组元素，而不是 push 整个响应
+            // Fix: Use append to expand array elements instead of pushing the entire response
             if let Value::Array(Some(mut elements)) = resp {
                 responses.append(&mut elements);
             }
         }
 
-        // 记录该客户端订阅了这些模式
+        // Record that the client subscribed to these modes
         {
             let mut clients = self.clients.write().await;
             if let Some(state) = clients.get_mut(&client_id) {
@@ -224,7 +227,7 @@ impl PubSub {
         (aggregated_resp, rx)
     }
 
-    /// 订阅单个模式
+    /// Subscription single mode
     async fn psubscribe_single(&self, pattern: Bytes, client_id: u64) -> Value {
         let mut patterns = self.patterns.write().await;
         patterns
@@ -244,20 +247,20 @@ impl PubSub {
     pub async fn publish(&self, channel: &[u8], message_content: Bytes) -> Value {
         let mut delivered_clients = HashSet::new();
 
-        // 精确频道订阅者
+        // Precise channel subscribers
         let exact_subs: HashSet<u64> = {
             let subs = self.subs.read().await;
             subs.get(channel).cloned().unwrap_or_default()
         };
 
-        // 构建精确订阅消息
+        // Build precise subscription messages
         let exact_msg = Value::Array(Some(vec![
             Value::SimpleString("message".to_string()),
             Value::BulkString(Some(channel.to_vec().into())),
             Value::BulkString(Some(message_content.clone())),
         ]));
 
-        // 收集所有匹配的模式及其订阅者
+        // Collect all matching patterns and their subscribers
         let mut pattern_targets: Vec<(Bytes, HashSet<u64>)> = Vec::new();
         {
             let patterns = self.patterns.read().await;
@@ -270,7 +273,7 @@ impl PubSub {
 
         let clients = self.clients.read().await;
 
-        // 发送给精确订阅者
+        // Send to precise subscribers
         for client_id in &exact_subs {
             if let Some(state) = clients.get(client_id) {
                 if state.sender.send(Some(exact_msg.clone())).is_ok() {
@@ -279,7 +282,7 @@ impl PubSub {
             }
         }
 
-        // 发送给模式订阅者（每个模式使用独立的 pmessage 格式）
+        // Send to pattern subscribers (each pattern uses a separate pmessage format)
         for (pattern, set) in &pattern_targets {
             let pmessage = Value::Array(Some(vec![
                 Value::SimpleString("pmessage".to_string()),
@@ -297,13 +300,13 @@ impl PubSub {
         }
         drop(clients);
 
-        // 返回收到消息的客户端数量（去重）
+        // Return the number of clients who received the message (deduplicated)
         Value::Integer(delivered_clients.len() as i64)
     }
 
-    /// 完全移除客户端（连接断开时调用）
+    /// Completely remove the client (called when the connection is disconnected)
     pub async fn remove_client(&self, client_id: u64) {
-        // 清理精确频道订阅
+        // Clear precise channel subscriptions
         let mut subs = self.subs.write().await;
         subs.retain(|_, set| {
             set.remove(&client_id);
@@ -311,7 +314,7 @@ impl PubSub {
         });
         drop(subs);
 
-        // 清理模式订阅
+        // Clean up mode subscription
         let mut patterns = self.patterns.write().await;
         patterns.retain(|_, set| {
             set.remove(&client_id);
@@ -319,15 +322,15 @@ impl PubSub {
         });
         drop(patterns);
 
-        // 强制移除客户端状态，并先发送空消息通知所有 Receiver
+        // Forcefully remove the client state and send an empty message to notify all receivers first
         let mut clients = self.clients.write().await;
         if let Some(state) = clients.get_mut(&client_id) {
-            let _ = state.sender.send(None); // 发送关闭信号
+            let _ = state.sender.send(None); // Send a shutdown signal
         }
         clients.remove(&client_id);
     }
 
-    /// 退订多个模式（外部调用）
+    /// Unsubscribe from multiple modes (external calls)
     pub async fn punsubscribe(&self, patterns: Vec<Bytes>, client_id: u64) -> Value {
         let mut responses = Vec::new();
         for pattern in &patterns {
@@ -337,7 +340,8 @@ impl PubSub {
             }
         }
 
-        // 从客户端状态中移除这些模式的记录，并在无订阅时清理
+        // Remove records of these patterns from the client state
+        // and clean them up when there are no subscriptions
         {
             let mut clients = self.clients.write().await;
             if let Some(state) = clients.get_mut(&client_id) {
@@ -351,7 +355,7 @@ impl PubSub {
         Value::Array(Some(responses))
     }
 
-    /// 退订单个模式（内部辅助）
+    /// Unsubscribe individual mode (internal assistance)
     async fn punsubscribe_single(&self, pattern: Bytes, client_id: u64) -> Value {
         let mut patterns = self.patterns.write().await;
         match patterns.get_mut(&pattern) {
@@ -361,7 +365,8 @@ impl PubSub {
                 if set.is_empty() {
                     patterns.remove(&pattern);
                 }
-                // 如果实际取消了订阅，返回移除前计数；否则（未订阅此模式）返回 0
+                // If the subscription is actually cancelled, return the count before removal;
+                // Otherwise (not subscribed to this mode), return 0
                 Value::Array(Some(vec![
                     Value::SimpleString("punsubscribe".to_string()),
                     Value::BulkString(Some(pattern)),
@@ -376,11 +381,11 @@ impl PubSub {
         }
     }
 
-    /// 退订该客户端的所有模式（外部调用）
+    /// Unsubscribe all modes of this client (external calls)
     pub async fn punsubscribe_all_patterns(&self, client_id: u64) -> Value {
         let mut responses = Vec::new();
 
-        // 获取该客户端订阅的所有模式
+        // Get all modes subscribed by the client
         let patterns = {
             let clients = self.clients.read().await;
             clients
@@ -395,7 +400,7 @@ impl PubSub {
                 .unwrap_or_default()
         };
 
-        // 退订所有模式
+        // Unsubscribe from all modes
         let mut pats = self.patterns.write().await;
         for pattern in &patterns {
             if let Some(set) = pats.get_mut(pattern) {
@@ -413,7 +418,7 @@ impl PubSub {
         }
         drop(pats);
 
-        // 清理客户端状态，如果没有任何订阅则发送关闭信号
+        // Clear the client status and send a close signal if there are no subscriptions
         {
             let mut clients = self.clients.write().await;
             if let Some(state) = clients.get_mut(&client_id) {
@@ -426,7 +431,7 @@ impl PubSub {
     }
 
     /// PUBSUB CHANNELS [pattern]
-    /// 列出当前活跃的频道，可选 pattern 进行 glob 过滤
+    /// List the currently active channels and select patterns for glob filtering
     pub async fn pubsub_channels(&self, pattern: Option<&[u8]>) -> Value {
         let subs = self.subs.read().await;
         let channels: Vec<Value> = subs
@@ -444,7 +449,7 @@ impl PubSub {
     }
 
     /// PUBSUB NUMSUB [channel [channel ...]]
-    /// 返回指定频道的订阅者数量
+    /// Return the number of subscribers to the specified channel
     pub async fn pubsub_numsub(&self, channels: &[Bytes]) -> Value {
         let subs = self.subs.read().await;
         let mut result = Vec::with_capacity(channels.len() * 2);
@@ -457,13 +462,13 @@ impl PubSub {
     }
 
     /// PUBSUB NUMPAT
-    /// 返回所有客户端订阅的模式数量（不同模式的数量）
+    /// Return the number of modes subscribed by all clients (the number of different modes)
     pub async fn pubsub_numpat(&self) -> Value {
         let patterns = self.patterns.read().await;
         Value::Integer(patterns.len() as i64)
     }
 
-    /// 获取客户端当前订阅的精确频道数量
+    /// Get the exact number of channels currently subscribed to by the client
     pub async fn client_subscription_count(&self, client_id: u64) -> u64 {
         let clients = self.clients.read().await;
         clients
@@ -472,7 +477,7 @@ impl PubSub {
             .unwrap_or(0)
     }
 
-    /// 获取客户端当前订阅的模式数量
+    /// Get the current number of subscription modes for the client
     pub async fn client_pattern_count(&self, client_id: u64) -> u64 {
         let clients = self.clients.read().await;
         clients
@@ -481,14 +486,17 @@ impl PubSub {
             .unwrap_or(0)
     }
 
-    // ------------------ 私有辅助函数 ------------------
+    // ------------------ Private auxiliary function ------------------
 
-    /// 当客户端不再有任何订阅时，发送空消息并移除客户端状态。
-    /// 调用前需保证已持有 `clients` 的写锁，并已更新完订阅集合。
+    /// When the client no longer has any subscriptions,
+    /// send an empty message and remove the client state.
+    /// Before calling, it is necessary to ensure that the write lock for 'clients'
+    /// is already held and the subscription collection has been updated.
     fn cleanup_client_if_empty(clients: &mut HashMap<u64, ClientState>, client_id: u64) {
         if let Some(state) = clients.get_mut(&client_id) {
             if state.subscribed_channels.is_empty() && state.subscribed_patterns.is_empty() {
-                // 发送一个 None 作为关闭信号，通知所有 Receiver 订阅已结束
+                // Send a 'None' as a shutdown signal to notify all receivers
+                // that the subscription has ended
                 let _ = state.sender.send(None);
                 clients.remove(&client_id);
             }
@@ -496,7 +504,7 @@ impl PubSub {
     }
 }
 
-/// 简单的 glob 风格模式匹配（支持 * 和 ?）
+/// Simple globe style pattern matching (supports * and?)
 pub fn matches_pattern(channel: &[u8], pattern: &[u8]) -> bool {
     if pattern.is_empty() {
         return channel.is_empty();

@@ -34,11 +34,11 @@ impl RenameNxParams {
 
         let key = items[1]
             .string_bytes_clone()
-            .ok_or(ProtocolError::WrongArgCount("renamenx"))?;
+            .ok_or(ProtocolError::InvalidArgument("renamenx"))?;
 
         let new_key = items[2]
             .string_bytes_clone()
-            .ok_or(ProtocolError::WrongArgCount("renamenx"))?;
+            .ok_or(ProtocolError::InvalidArgument("renamenx"))?;
 
         Ok(RenameNxParams { key, new_key })
     }

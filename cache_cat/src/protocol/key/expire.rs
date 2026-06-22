@@ -42,7 +42,7 @@ impl ExpireParams {
 
         let key = items[1]
             .string_bytes_clone()
-            .ok_or(ProtocolError::WrongArgCount("key"))?;
+            .ok_or(ProtocolError::InvalidArgument("key"))?;
 
         let seconds = items[2].try_parse_u64()?;
 

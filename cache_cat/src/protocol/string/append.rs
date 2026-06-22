@@ -114,7 +114,6 @@ impl ComputeCommand for AppendReq {
     ) -> (MochaOperation<MyValue>, Value) {
         match &entry.value.data {
             ValueObject::String(data_arc) => {
-                // TODO: google translation
                 // Construct a new string: original content + appended content
                 let mut new_buf = BytesMut::from(data_arc.clone());
                 new_buf.extend_from_slice(&self.value);

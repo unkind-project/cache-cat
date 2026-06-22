@@ -32,7 +32,7 @@ impl IncrParams {
             .string_bytes_clone()
             .ok_or(ProtocolError::InvalidArgument("key"))?;
 
-        Ok(IncrParams { key: key.into() })
+        Ok(IncrParams { key })
     }
 }
 

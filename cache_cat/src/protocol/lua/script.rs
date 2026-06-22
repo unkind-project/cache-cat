@@ -7,19 +7,19 @@ use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::fmt;
 
-/// SCRIPT LOAD 的参数
+/// SCRIPT LOAD args
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ScriptLoadParams {
     pub script: String,
 }
 
-/// SCRIPT EXISTS 的参数
+/// SCRIPT EXISTS args
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ScriptExistsParams {
     pub sha1s: Vec<String>,
 }
 
-/// SCRIPT FLUSH 的参数 (Redis 6+ 支持 ASYNC/SYNC)
+/// SCRIPT FLUSH args (Redis 6+ support ASYNC/SYNC)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ScriptFlushParams {
     pub flush_mode: FlushMode,
@@ -31,7 +31,7 @@ pub enum FlushMode {
     Async,
 }
 
-/// SCRIPT DEBUG 的子命令
+// SCRIPT DEBUG subcommands
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ScriptDebugMode {
     Yes,
@@ -39,7 +39,7 @@ pub enum ScriptDebugMode {
     No,
 }
 
-/// 所有 SCRIPT 子命令的枚举
+/// all SCRIPT enumeration of subcommands
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ScriptParam {
     Load(ScriptLoadParams),
@@ -74,14 +74,14 @@ impl fmt::Display for ScriptParam {
 }
 
 impl ScriptParam {
-    /// 从命令数组解析 SCRIPT 子命令
-    /// 输入 items 的第一个元素必须是 "SCRIPT"
+    /// Parse SCRIPT sub commands from command array
+    /// The first element of the input items must be 'SCRIPT'
     pub fn parse(items: &[Value]) -> Result<Self, ProtocolError> {
         if items.is_empty() {
             return Err(ProtocolError::WrongArgCount("script"));
         }
 
-        // 子命令名
+        // subcommand name
         let sub_cmd = items[1]
             .as_str_lossy()
             .ok_or(ProtocolError::InvalidArgument("script subcommand"))?
@@ -106,7 +106,7 @@ impl ScriptParam {
             }
             "FLUSH" => {
                 // SCRIPT FLUSH [ASYNC | SYNC]
-                let mut flush_mode = FlushMode::Sync; // 默认
+                let mut flush_mode = FlushMode::Sync; // default
                 if items.len() > 3 {
                     return Err(ProtocolError::WrongArgCount("script|flush"));
                 }
@@ -121,7 +121,7 @@ impl ScriptParam {
                 Ok(ScriptParam::Flush(ScriptFlushParams { flush_mode }))
             }
             "KILL" => {
-                // SCRIPT KILL 无参数
+                // SCRIPT KILL no arg
                 if items.len() != 2 {
                     return Err(ProtocolError::WrongArgCount("script|kill"));
                 }
@@ -146,7 +146,7 @@ impl ScriptParam {
     }
 }
 
-/// 辅助函数：从 Value 提取字符串
+/// Auxiliary function: Extract string from Value
 fn string_from_value(value: &Value, _context: &str) -> Result<String, ProtocolError> {
     match value {
         Value::BulkString(Some(data)) => str::from_utf8(data).map(ToString::to_string).ok(),

@@ -32,7 +32,7 @@ pub struct GetReq {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetRes {
-    // Arc<Vec<u8>> 在 serde 中有实现（在 std/alloc 可用的情况下）
+    // Arc<Vec<u8>> is implemented in serde (when std/alloc is available)
     pub value: Value,
 }
 

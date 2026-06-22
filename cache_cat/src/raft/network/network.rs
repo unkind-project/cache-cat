@@ -15,8 +15,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::info;
 
-// TODO: Chinese transitions
-
 pub struct NetworkFactory {}
 impl RaftNetworkFactory<TypeConfig> for NetworkFactory {
     type Network = TcpNetwork;

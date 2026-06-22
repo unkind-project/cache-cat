@@ -20,7 +20,7 @@ use std::fmt::Display;
 pub struct SetBitParams {
     pub key: Bytes,
     pub offset: u64,
-    pub value: u8, // 0 或 1
+    pub value: u8, // 0 or 1
 }
 
 impl Display for SetBitParams {
@@ -66,11 +66,11 @@ impl ComputeCommand for SetBitReq {
         entry: EntrySnapshot<MyValue>,
         _write_clock: u64,
     ) -> (MochaOperation<MyValue>, Value) {
-        // 获取字符串表示的字节数组
+        // Obtain a byte array from its string representation
         let bytes = match &entry.value.data {
             ValueObject::String(data_arc) => data_arc.clone(),
             ValueObject::Int(int_value) => {
-                // 整数转换为字符串表示
+                // Convert an integer to its string representation
                 int_value.to_string().into()
             }
             _ => {
@@ -84,7 +84,6 @@ impl ComputeCommand for SetBitReq {
             }
         };
 
-        // TODO: BytesMut
         let mut bytes = BytesMut::from(bytes);
         let offset = self.offset;
         let bit_value = self.value & 1; // Ensure only 0 or 1
@@ -163,32 +162,7 @@ impl SetBitCommand {
             "ERR bit offset is not an integer or out of range",
         ))?;
 
-        let value = match &items[3] {
-            Value::BulkString(Some(data)) => {
-                if let Ok(v) = String::from_utf8_lossy(data).parse::<u8>()
-                    && v <= 1
-                {
-                    Some(v)
-                } else {
-                    None
-                }
-            }
-
-            Value::SimpleString(s) => {
-                if let Ok(v) = s.parse::<u8>()
-                    && v <= 1
-                {
-                    Some(v)
-                } else {
-                    None
-                }
-            }
-
-            Value::Integer(i) if !(*i < 0 || *i > 1) => Some(*i as u8),
-
-            _ => None,
-        }
-        .ok_or(ProtocolError::Custom(
+        let value = items[3].parse_bool_u8().ok_or(ProtocolError::Custom(
             "ERR bit is not an integer or out of range",
         ))?;
 
