@@ -45,16 +45,16 @@ impl SubCommand for ClientInfoCommand {
         server: &RedisServer,
     ) -> Result<Value, CacheCatError> {
         let mut map: HashMap<String, String> = HashMap::new();
-        map.insert("id".to_string(), client.id.to_string());
-        let client_addr = client.framed.get_ref().peer_addr()?.to_string();
-        // client.framed.get_ref().peer_addr()?.port().to_string();
-        map.insert("addr".to_string(), client_addr);
-
-        let local_addr = client.framed.get_ref().local_addr()?.to_string();
-        map.insert("laddr".to_string(), local_addr);
-
-        let fd = connection_id(&client.framed);
-        map.insert("fd".to_string(), fd.to_string());
+        // map.insert("id".to_string(), client.id.to_string());
+        // let client_addr = client.framed.get_ref().peer_addr()?.to_string();
+        // // client.framed.get_ref().peer_addr()?.port().to_string();
+        // map.insert("addr".to_string(), client_addr);
+        //
+        // let local_addr = client.framed.get_ref().local_addr()?.to_string();
+        // map.insert("laddr".to_string(), local_addr);
+        //
+        // let fd = connection_id(&client.framed);
+        // map.insert("fd".to_string(), fd.to_string());
 
         map.insert("name".to_string(), client.name.to_string());
 

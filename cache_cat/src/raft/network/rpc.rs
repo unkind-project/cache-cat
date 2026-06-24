@@ -1,4 +1,5 @@
 use crate::error::{CacheCatError, Error};
+use crate::node::parsed_config::ParsedConfig;
 use crate::raft::network::external_handler::{HANDLER_TABLE, write};
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::store::snapshot::snapshot_handler::get_snapshot_file_name;
@@ -34,8 +35,9 @@ impl Server {
         addr: String,
         startup_tx: Sender<StdResult<(), String>>,
         redis_addr: String,
+        config: &ParsedConfig,
     ) -> Self {
-        let redis_server = RedisServer::new(app.clone(), redis_addr);
+        let redis_server = RedisServer::new(app.clone(), redis_addr, config);
         Server {
             app: app.clone(),
             addr,

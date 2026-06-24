@@ -27,6 +27,7 @@ pub struct ParsedConfig {
 
     /// 选举超时时间，节点之间的时钟偏移不能超过该值 需要大于500
     pub election_timeout: u64,
+
     /// 超过这个值将会直接进行快照，为0代表用不快照
     pub snapshot_policy: SnapshotPolicy,
 
@@ -37,8 +38,29 @@ pub struct ParsedConfig {
     pub cleaning_interval: u64,
 
     pub db_number: u16,
-}
 
+    // ================= TLS =================
+    /// TLS监听端口
+    pub tls_port: Option<u32>,
+
+    /// 服务端证书
+    pub tls_cert_file: Option<String>,
+
+    /// 服务端私钥
+    pub tls_key_file: Option<String>,
+
+    /// CA证书
+    pub tls_ca_cert_file: Option<String>,
+
+    /// 是否要求客户端证书
+    pub tls_auth_clients: bool,
+
+    /// TLS协议版本
+    pub tls_protocols: Option<String>,
+
+    /// Raft复制是否启用TLS
+    pub tls_replication: bool,
+}
 impl ParsedConfig {
     pub fn from(config: &Config) -> Result<Self> {
         let raft_endpoint = Endpoint::parse(&config.raft.address, config.redis.redis_port)?;
@@ -68,6 +90,14 @@ impl ParsedConfig {
             replication_lag_threshold: config.raft.replication_lag_threshold,
             cleaning_interval: config.redis.cleaning_interval,
             db_number: config.redis.databases,
+            // TLS
+            tls_port: config.tls.tls_port,
+            tls_cert_file: config.tls.tls_cert_file.clone(),
+            tls_key_file: config.tls.tls_key_file.clone(),
+            tls_ca_cert_file: config.tls.tls_ca_cert_file.clone(),
+            tls_auth_clients: config.tls.tls_auth_clients.unwrap_or(false),
+            tls_protocols: config.tls.tls_protocols.clone(),
+            tls_replication: config.tls.tls_replication.unwrap_or(false),
         })
     }
 }

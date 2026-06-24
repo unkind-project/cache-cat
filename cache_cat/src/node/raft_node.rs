@@ -209,7 +209,7 @@ impl RaftNode {
     }
 
     async fn start_raft_service(raft_node: Arc<Self>) -> Result<()> {
-        let _raft_endpoint = raft_node.app.config.raft_endpoint.clone();
+        let config = raft_node.app.config.clone();
         let app = raft_node.app.clone();
         // Subscribe to shutdown signal
         let shutdown_rx = raft_node.shutdown_tx.subscribe();
@@ -217,11 +217,11 @@ impl RaftNode {
         // Create oneshot channel to signal startup completion
         let (startup_tx, startup_rx) = oneshot::channel::<StdResult<(), String>>();
 
-        let addr = raft_node.app.config.raft_advertise_endpoint.raft_addr();
-        let redis_addr = raft_node.app.config.raft_advertise_endpoint.redis_addr();
+        let addr = config.raft_advertise_endpoint.raft_addr();
+        let redis_addr = config.raft_advertise_endpoint.redis_addr();
         let handle = tokio::task::spawn(async move {
             // Signal startup success
-            let server = Server::new(app, addr.clone(), startup_tx, redis_addr);
+            let server = Server::new(app, addr.clone(), startup_tx, redis_addr, &config);
             if let Err(e) = server.start_server(shutdown_rx).await {
                 error!("Server error: {}", e);
             }

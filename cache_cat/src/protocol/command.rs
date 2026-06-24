@@ -72,6 +72,7 @@ use futures::StreamExt;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Display, Formatter};
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio::select;
 use tokio::sync::watch;
@@ -118,13 +119,16 @@ pub trait SubCommand: Send + Sync {
     ) -> Result<Value, CacheCatError>;
 }
 
+pub trait AsyncReadWrite: AsyncRead + AsyncWrite + Unpin + Send {}
+impl<T: AsyncRead + AsyncWrite + Unpin + Send> AsyncReadWrite for T {}
+
 pub struct Client {
     pub id: u64,
     pub db_number: u16,
     pub transaction_queue: Option<Vec<Operation>>,
     pub closed: bool,
     pub authenticated: bool,
-    pub framed: Framed<TcpStream, RespCodec>,
+    pub framed: Framed<Box<dyn AsyncReadWrite>, RespCodec>,
     pub name: String,
     pub connection_time: u64,
     pub last_interaction: u64,
@@ -135,14 +139,14 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(id: u64, framed: Framed<TcpStream, RespCodec>, auth: bool) -> Self {
+    pub fn new<S: AsyncReadWrite + 'static>(id: u64, stream: S, auth: bool) -> Self {
         Self {
             id,
             db_number: 0,
             transaction_queue: None,
             closed: false,
             authenticated: auth,
-            framed,
+            framed: Framed::new(Box::new(stream), RespCodec::new()),
             name: "".to_string(),
             connection_time: now_ms(),
             last_interaction: now_ms(),

@@ -3,7 +3,7 @@
 //! This module provides a unified error type that hides internal complexity
 //! behind a simple, user-facing interface.
 
-use crate::error::ErrorKind::{Internal, InvalidConfig, Protocol, RPC, Retryable, Storage};
+use crate::error::ErrorKind::{Internal, InvalidConfig, Protocol, RPC, Retryable, Storage, Tls};
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::raft_types::TypeConfig;
 use mlua::prelude::LuaError;
@@ -138,6 +138,10 @@ pub enum ErrorKind {
     /// RPC-level error
     #[error(transparent)]
     RPC(#[from] RpcError),
+
+    /// TLS-related error
+    #[error(transparent)]
+    Tls(#[from] TlsError),
 }
 
 /// Storage-related errors (Raft, RocksDB operations)
@@ -222,6 +226,34 @@ pub enum ProtocolError {
 
     #[error("ERR Client sent AUTH, but no password is set")]
     NotAuthenticated,
+}
+
+/// TLS-related errors
+#[derive(thiserror::Error, Clone, Debug, PartialEq, Eq)]
+pub enum TlsError {
+    /// Failed to load TLS certificate
+    #[error("failed to load certificate: {0}")]
+    CertificateLoad(String),
+
+    /// Failed to load TLS private key
+    #[error("failed to load private key: {0}")]
+    PrivateKeyLoad(String),
+
+    /// Failed to load CA certificate
+    #[error("failed to load CA certificate: {0}")]
+    CaCertificateLoad(String),
+
+    /// Invalid TLS configuration
+    #[error("invalid TLS configuration: {0}")]
+    InvalidConfig(String),
+
+    /// TLS handshake error
+    #[error("TLS handshake failed: {0}")]
+    Handshake(String),
+
+    /// Generic TLS error
+    #[error("TLS error: {0}")]
+    General(String),
 }
 
 /// RPC-related errors
@@ -313,6 +345,7 @@ impl Display for ErrorKind {
             Protocol(err) => write!(f, "protocol error: {}", err),
             Storage(err) => write!(f, "storage error: {}", err),
             RPC(err) => write!(f, "RPC error: {}", err),
+            Tls(err) => write!(f, "TLS error: {}", err),
         }
     }
 }
@@ -398,6 +431,7 @@ impl From<CacheCatError> for Value {
             InvalidConfig(e) => Value::error(format!("ERR {}", e)),
             Retryable { reason: e } => Value::error(format!("ERR {}", e)),
             RPC(e) => Value::error(format!("ERR {}", e)),
+            Tls(e) => Value::error(format!("ERR {}", e)),
         }
     }
 }
