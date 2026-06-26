@@ -25,8 +25,10 @@ use crate::protocol::key::pexpire::PExpireCommand;
 use crate::protocol::key::rename::RenameCommand;
 use crate::protocol::key::renamenx::RenameNxCommand;
 use crate::protocol::list::llen::LLenCommand;
+use crate::protocol::list::lpop::LPopCommand;
 use crate::protocol::list::lpush::LPushCommand;
 use crate::protocol::list::lrange::LRangeCommand;
+use crate::protocol::list::rpop::RPopCommand;
 use crate::protocol::list::rpush::RPushCommand;
 use crate::protocol::lua::eval::EvalCommand;
 use crate::protocol::lua::evalsha::EvalShaCommand;
@@ -389,6 +391,8 @@ impl CommandFactory {
         factory.register("RPUSH", RPushCommand);
         factory.register("LRANGE", LRangeCommand);
         factory.register("LLEN", LLenCommand);
+        factory.register("LPOP", LPopCommand);
+        factory.register("RPOP", RPopCommand);
         // Hash commands
         factory.register("HSET", HSetCommand);
         factory.register("HGET", HGetCommand);

@@ -19,6 +19,7 @@ use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
+use crate::protocol::list::rpop::RPopReq;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BaseOperation {
@@ -38,6 +39,7 @@ pub enum BaseOperation {
     LPush(LPushReq),
     RPush(RPushReq),
     LPop(LPopReq),
+    RPop(RPopReq),
     //hash
     HSet(HSetReq),
     HIncr(HIncrReq),

@@ -60,6 +60,7 @@ pub fn base_request(
         BaseOperation::SetBit(param) => my_cache.set_bit(param, update),
         BaseOperation::LPop(param) => my_cache.l_pop(param, update),
         BaseOperation::RPush(param) => my_cache.r_push(param, update),
+        BaseOperation::RPop(param) => my_cache.r_pop(param, update),
     }
 }
 
