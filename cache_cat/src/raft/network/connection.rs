@@ -1,4 +1,3 @@
-use crate::raft::network::redis_server::RespCodec;
 use std::io::IoSlice;
 #[cfg(unix)]
 use std::os::unix::io::{AsRawFd, RawFd};

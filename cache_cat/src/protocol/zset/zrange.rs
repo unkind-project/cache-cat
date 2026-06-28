@@ -74,7 +74,7 @@ impl ReadCommand for ZRangeParams {
                                 // 尝试解析为数字
                                 let score_value = if let Ok(num) = score.parse::<i64>() {
                                     Value::Integer(num)
-                                } else if let Ok(num) = score.parse::<f64>() {
+                                } else if let Ok(_num) = score.parse::<f64>() {
                                     Value::BulkString(Some(score_bytes))
                                 } else {
                                     Value::BulkString(Some(score_bytes))

@@ -10,6 +10,7 @@ use std::net::SocketAddr;
 use std::result::Result as StdResult;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[serde(rename_all = "kebab-case")]
 pub struct Config {
     #[serde(default = "default_node_id")]
     pub node_id: u16,
@@ -26,6 +27,7 @@ pub struct Config {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[serde(rename_all = "kebab-case")]
 pub struct RedisConfig {
     /// TLS监听端口
     pub tls_port: Option<u32>,
@@ -43,6 +45,7 @@ pub struct RedisConfig {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[serde(rename_all = "kebab-case")]
 pub struct RaftConfig {
     pub log_path: String,
 
@@ -72,6 +75,7 @@ pub struct RaftConfig {
 ///
 /// 所有字段均允许为空
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[serde(rename_all = "kebab-case")]
 pub struct TlsConfig {
     /// 服务端证书
     pub tls_cert_file: Option<String>,

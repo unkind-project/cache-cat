@@ -14,7 +14,6 @@ use crate::raft::types::file_operator::FileOperator;
 use futures::future::join_all;
 use openraft::RPCTypes::Vote;
 use openraft::error::Timeout;
-use rustls::ServerConfig;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;

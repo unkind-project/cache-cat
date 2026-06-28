@@ -10,7 +10,6 @@ use bytes::{Buf, BytesMut};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tokio_rustls::TlsAcceptor;
 use tokio_util::codec::{Decoder, Encoder};
 use tracing::{error, info};
 

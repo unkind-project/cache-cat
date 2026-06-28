@@ -235,7 +235,7 @@ impl RpcClient {
         addr: &str,
         tls_connector: Option<TlsConnector>,
     ) -> Result<Self, Box<dyn Error + Send + Sync>> {
-        let mut stream = TcpStream::connect(addr).await?;
+        let stream = TcpStream::connect(addr).await?;
         stream.set_nodelay(true)?; // RPC 必须关闭 Nagle 算法以降低延迟
 
         // 根据传入的 tls_connector 来决定走 TLS 还是普通明文 TCP
