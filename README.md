@@ -2,7 +2,8 @@
 
 <div align="center">
 <a href="https://github.com/nasuiyile/cache-cat/blob/master/README.md">English</a> ｜
-<a href="https://github.com/nasuiyile/cache-cat/blob/master/README_zh.md">简体中文</a>
+<a href="https://github.com/nasuiyile/cache-cat/blob/master/README_zh.md">简体中文</a> |
+<a href="https://nasuiyile.github.io/cache-cat-website">Official Website</a> 
 </div>
 
 ## Introduction
@@ -15,7 +16,7 @@ In terms of positioning, the most comparable project is [RedisRaft](https://gith
 
 > Even when Redis cluster solutions are used, Redis can still lose data. Redis clustering primarily addresses availability rather than data consistency.
 
-Compared with systems such as etcd, Apache ZooKeeper, and Consul, which also rely on consensus algorithms and provide reliable data storage, Cache-Cat offers significantly lower latency and higher throughput. Under the same environment and default configurations, Cache-Cat can achieve approximately **160,000 writes per second**, whereas etcd achieves around **60,000 writes per second**.
+Compared with systems such as etcd, Apache ZooKeeper, Consul, and TiKV, which also rely on consensus algorithms and provide reliable data storage, Cache-Cat offers significantly lower latency and higher throughput. Under the same environment and default configurations, Cache-Cat can achieve approximately 500,000 writes per second, whereas TiKV achieves around 200,000 writes per second.
 
 Furthermore, these systems were not originally designed as caching solutions and therefore lack many cache-oriented features such as:
 
