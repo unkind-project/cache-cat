@@ -74,14 +74,13 @@ use futures::StreamExt;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-
 use tokio::select;
 use tokio::sync::watch;
-
 use crate::protocol::key::type_::TypeCommand;
 use crate::raft::network::connection::Connection;
 use tokio_util::codec::Framed;
 use tracing::{error, warn};
+use crate::protocol::list::lindex::LIndexCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -264,6 +263,7 @@ impl CommandFactory {
         factory.register("LLEN", LLenCommand);
         factory.register("LPOP", LPopCommand);
         factory.register("RPOP", RPopCommand);
+        factory.register("LINDEX", LIndexCommand);
         // Hash commands
         factory.register("HSET", HSetCommand);
         factory.register("HGET", HGetCommand);

@@ -4,3 +4,4 @@ pub mod lpush;
 pub mod lrange;
 pub mod rpop;
 pub mod rpush;
+pub mod lindex;

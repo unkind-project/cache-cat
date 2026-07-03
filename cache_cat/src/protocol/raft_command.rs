@@ -15,6 +15,8 @@ use crate::protocol::key::persist::PersistCommand;
 use crate::protocol::key::pexpire::PExpireCommand;
 use crate::protocol::key::rename::RenameCommand;
 use crate::protocol::key::renamenx::RenameNxCommand;
+use crate::protocol::key::type_::TypeCommand;
+use crate::protocol::list::lindex::LIndexCommand;
 use crate::protocol::list::llen::LLenCommand;
 use crate::protocol::list::lpop::LPopCommand;
 use crate::protocol::list::lpush::LPushCommand;
@@ -45,7 +47,6 @@ use crate::raft::types::entry::request::Operation;
 use std::collections::HashMap;
 use std::fmt;
 use tracing::warn;
-use crate::protocol::key::type_::TypeCommand;
 
 pub trait RaftCommand: Send + Sync {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError>;
@@ -133,6 +134,7 @@ impl RaftCommandFactory {
         factory.register("LLEN", LLenCommand);
         factory.register("RPUSH", RPushCommand);
         factory.register("TYPE", TypeCommand);
+        factory.register("LINDEX", LIndexCommand);
         factory
     }
 
