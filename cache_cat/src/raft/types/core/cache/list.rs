@@ -1,5 +1,6 @@
 use crate::protocol::list::lpop::LPopReq;
 use crate::protocol::list::lpush::LPushReq;
+use crate::protocol::list::lrem::LRemReq;
 use crate::protocol::list::rpop::RPopReq;
 use crate::protocol::list::rpush::RPushReq;
 use crate::raft::types::core::mocha::mocha::{MyCache, Update};
@@ -20,6 +21,10 @@ impl MyCache {
     }
 
     pub fn r_pop(&self, param: RPopReq, update: &mut Update) -> Value {
+        self.execute_compute(param, update)
+    }
+    
+    pub fn l_rem(&self, param: LRemReq, update: &mut Update) -> Value {
         self.execute_compute(param, update)
     }
 }

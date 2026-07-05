@@ -61,6 +61,7 @@ pub fn base_request(
         BaseOperation::LPop(param) => my_cache.l_pop(param, update),
         BaseOperation::RPush(param) => my_cache.r_push(param, update),
         BaseOperation::RPop(param) => my_cache.r_pop(param, update),
+        BaseOperation::LRem(param) => my_cache.l_rem(param, update),
     }
 }
 

@@ -21,6 +21,7 @@ use crate::protocol::list::llen::LLenCommand;
 use crate::protocol::list::lpop::LPopCommand;
 use crate::protocol::list::lpush::LPushCommand;
 use crate::protocol::list::lrange::LRangeCommand;
+use crate::protocol::list::lrem::LRemCommand;
 use crate::protocol::list::rpop::RPopCommand;
 use crate::protocol::list::rpush::RPushCommand;
 use crate::protocol::lua::eval::EvalCommand;
@@ -135,6 +136,7 @@ impl RaftCommandFactory {
         factory.register("RPUSH", RPushCommand);
         factory.register("TYPE", TypeCommand);
         factory.register("LINDEX", LIndexCommand);
+        factory.register("LREM", LRemCommand);
         factory
     }
 
