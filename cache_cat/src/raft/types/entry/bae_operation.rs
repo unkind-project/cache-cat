@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
 use crate::protocol::list::lrem::LRemReq;
+use crate::protocol::list::lset::LSetReq;
 use crate::protocol::list::rpop::RPopReq;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,6 +43,7 @@ pub enum BaseOperation {
     LPop(LPopReq),
     RPop(RPopReq),
     LRem(LRemReq),
+    LSet(LSetReq),
     //hash
     HSet(HSetReq),
     HIncr(HIncrReq),

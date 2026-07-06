@@ -1,8 +1,9 @@
+pub mod lindex;
 pub mod llen;
 pub mod lpop;
 pub mod lpush;
 pub mod lrange;
+pub mod lrem;
+pub mod lset;
 pub mod rpop;
 pub mod rpush;
-pub mod lindex;
-pub mod lrem;
