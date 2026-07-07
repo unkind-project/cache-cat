@@ -83,6 +83,7 @@ use tokio_util::codec::Framed;
 use tracing::{error, warn};
 use crate::protocol::list::lrem::LRemCommand;
 use crate::protocol::list::lset::LSetCommand;
+use crate::protocol::set::sismember::SIsMemberCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -288,6 +289,7 @@ impl CommandFactory {
         factory.register("SADD", SAddCommand);
         factory.register("SMEMBERS", SMembersCommand);
         factory.register("SREM", SRemCommand);
+        factory.register("SISMEMBER", SIsMemberCommand);
         // ZSet commands
         factory.register("ZADD", ZAddCommand);
         factory.register("ZRANGE", ZRangeCommand);

@@ -27,6 +27,7 @@ use crate::protocol::list::rpop::RPopCommand;
 use crate::protocol::list::rpush::RPushCommand;
 use crate::protocol::lua::eval::EvalCommand;
 use crate::protocol::set::sadd::SAddCommand;
+use crate::protocol::set::sismember::SIsMemberCommand;
 use crate::protocol::set::smembers::SMembersCommand;
 use crate::protocol::set::srem::SRemCommand;
 use crate::protocol::string::append::AppendCommand;
@@ -139,6 +140,7 @@ impl RaftCommandFactory {
         factory.register("LINDEX", LIndexCommand);
         factory.register("LREM", LRemCommand);
         factory.register("LSET", LSetCommand);
+        factory.register("SISMEMBER", SIsMemberCommand);
         factory
     }
 

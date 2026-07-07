@@ -28,6 +28,7 @@ pub fn read_request(
         ReadOperation::LLen(param) => my_cache.execute_read(param, db_number, read_clock),
         ReadOperation::Type(param) => my_cache.execute_read(param, db_number, read_clock),
         ReadOperation::LIndex(param) => my_cache.execute_read(param, db_number, read_clock),
+        ReadOperation::SIsMember(param) => my_cache.execute_read(param, db_number, read_clock),
     }
 }
 

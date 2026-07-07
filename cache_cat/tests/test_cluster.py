@@ -48,6 +48,8 @@ print(r.echo('test13'))
 
 r.sadd('test14', 'test')
 print(r.smembers('test14'))
+print("----")
+print(r.sismember('test14', 'test'))
 
 r.hset('test15', 'test', 'test')
 r.hmget('test15', ['test'])
@@ -108,15 +110,11 @@ print(r.mget(["test12", "test12"]))
 r.lpush("list test1", "test")
 print(r.llen("list test1"))
 
-
-
 #
 r.set("test20", "test20")
 r.expire("test20", 1)
 sleep(0.5)
 print(r.get("test20"))
-
-
 
 r.rpush("list test2", "test")
 print(r.rpush("list test2", "test2"))
