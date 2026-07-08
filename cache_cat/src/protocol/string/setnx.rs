@@ -1,12 +1,33 @@
 use crate::error::{CacheCatError, ProtocolError};
 use crate::protocol::command::{Client, Command};
 use crate::protocol::raft_command::RaftCommand;
-use crate::protocol::string::set::{SetMode, SetParams};
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::request::Operation;
-use crate::raft::types::entry::request::RedisOperation::RedisSet;
+use crate::raft::types::entry::request::RedisOperation::RedisSetNx;
 use async_trait::async_trait;
+use bytes::Bytes;
+use serde::{Deserialize, Serialize};
+use std::fmt;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SetNxParams {
+    /// The key to set
+    pub key: Bytes,
+    /// The value to set
+    pub value: Bytes,
+}
+
+impl fmt::Display for SetNxParams {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "SetNx {} {}",
+            String::from_utf8_lossy(&self.key),
+            String::from_utf8_lossy(&self.value)
+        )
+    }
+}
 
 /// SETNX command executor
 pub struct SetNxCommand;
@@ -16,7 +37,7 @@ impl SetNxCommand {
     ///
     /// Format:
     /// SETNX key value
-    fn parse(items: &[Value]) -> Result<SetParams, ProtocolError> {
+    fn parse(items: &[Value]) -> Result<SetNxParams, ProtocolError> {
         if items.len() != 3 {
             return Err(ProtocolError::WrongArgCount("setnx"));
         }
@@ -29,20 +50,14 @@ impl SetNxCommand {
             .string_bytes_clone()
             .ok_or(ProtocolError::InvalidArgument("value"))?;
 
-        Ok(SetParams {
-            key,
-            value,
-            mode: Some(SetMode::Nx),
-            get: false,
-            expiration: None,
-        })
+        Ok(SetNxParams { key, value })
     }
 }
 
 impl RaftCommand for SetNxCommand {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError> {
         let params = Self::parse(items)?;
-        Ok(Operation::Redis(RedisSet(params)))
+        Ok(Operation::Redis(RedisSetNx(params)))
     }
 }
 
@@ -61,7 +76,7 @@ impl Command for SetNxCommand {
         let params = Self::parse(items)?;
         server
             .app
-            .write(Operation::Redis(RedisSet(params)), client.db_number)
+            .write(Operation::Redis(RedisSetNx(params)), client.db_number)
             .await
     }
 }

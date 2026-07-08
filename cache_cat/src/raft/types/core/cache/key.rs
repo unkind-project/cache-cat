@@ -1,5 +1,6 @@
 use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
 use crate::protocol::key::del::{DelParams, DelReq};
+use crate::protocol::key::expire::ExpireReq;
 use crate::protocol::key::persist::PersistReq;
 use crate::protocol::key::pexpire::PExpireReq;
 use crate::protocol::key::rename::RenameParams;
@@ -143,6 +144,10 @@ impl MyCache {
 
     pub fn persist(&self, persist: PersistReq, update: &mut Update) -> Value {
         self.execute_compute(persist, update)
+    }
+
+    pub fn expire(&self, param: ExpireReq, update: &mut Update) -> Value {
+        self.execute_compute(param, update)
     }
 
     pub fn p_expire(&self, param: PExpireReq, update: &mut Update) -> Value {
