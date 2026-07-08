@@ -1,6 +1,7 @@
 use crate::error::ProtocolError;
 use crate::protocol::bitmap::getbit::GetBitCommand;
 use crate::protocol::bitmap::setbit::SetBitCommand;
+use crate::protocol::hash::hexists::HExistsCommand;
 use crate::protocol::hash::hget::HGetCommand;
 use crate::protocol::hash::hgetall::HGetAllCommand;
 use crate::protocol::hash::hincrby::HIncrByCommand;
@@ -141,6 +142,7 @@ impl RaftCommandFactory {
         factory.register("LREM", LRemCommand);
         factory.register("LSET", LSetCommand);
         factory.register("SISMEMBER", SIsMemberCommand);
+        factory.register("HEXISTS", HExistsCommand);
         factory
     }
 

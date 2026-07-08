@@ -85,6 +85,7 @@ impl fmt::Display for Request {
                 ReadOperation::Type(req) => write!(f, "Type: {}", req),
                 ReadOperation::LIndex(req) => write!(f, "LIndex: {}", req),
                 ReadOperation::SIsMember(req) => write!(f, "SIsMember: {}", req),
+                ReadOperation::HExists(req) => write!(f, "HExists: {}", req),
             },
             Operation::Base(op) => match op {
                 BaseOperation::Empty => write!(f, "None"),

@@ -15,6 +15,7 @@ use crate::protocol::string::mget::MgetParams;
 use crate::protocol::zset::zrange::ZRangeParams;
 use crate::protocol::zset::zrangegetscore::ZRangeByScoreParams;
 use serde::{Deserialize, Serialize};
+use crate::protocol::hash::hexists::HExistsParams;
 use crate::protocol::list::lindex::LIndexParams;
 use crate::protocol::set::sismember::SIsMemberParams;
 
@@ -37,5 +38,7 @@ pub enum ReadOperation {
     LLen(LLenParams),
     Type(TypeParams),
     LIndex(LIndexParams),
-    SIsMember(SIsMemberParams)
+    SIsMember(SIsMemberParams),
+    HExists(HExistsParams)
+
 }

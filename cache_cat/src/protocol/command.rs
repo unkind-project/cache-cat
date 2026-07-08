@@ -10,6 +10,7 @@ use crate::protocol::connection::ping::PingCommand;
 use crate::protocol::connection::quit::QuitCommand;
 use crate::protocol::connection::select::SelectCommand;
 use crate::protocol::hash::hdel::HDelCommand;
+use crate::protocol::hash::hexists::HExistsCommand;
 use crate::protocol::hash::hget::HGetCommand;
 use crate::protocol::hash::hgetall::HGetAllCommand;
 use crate::protocol::hash::hincrby::HIncrByCommand;
@@ -30,6 +31,8 @@ use crate::protocol::list::llen::LLenCommand;
 use crate::protocol::list::lpop::LPopCommand;
 use crate::protocol::list::lpush::LPushCommand;
 use crate::protocol::list::lrange::LRangeCommand;
+use crate::protocol::list::lrem::LRemCommand;
+use crate::protocol::list::lset::LSetCommand;
 use crate::protocol::list::rpop::RPopCommand;
 use crate::protocol::list::rpush::RPushCommand;
 use crate::protocol::lua::eval::EvalCommand;
@@ -47,6 +50,7 @@ use crate::protocol::server::save::SaveCommand;
 use crate::protocol::server::shutdown::ShutdownCommand;
 use crate::protocol::server::time::TimeCommand;
 use crate::protocol::set::sadd::SAddCommand;
+use crate::protocol::set::sismember::SIsMemberCommand;
 use crate::protocol::set::smembers::SMembersCommand;
 use crate::protocol::set::srem::SRemCommand;
 use crate::protocol::string::append::AppendCommand;
@@ -81,9 +85,6 @@ use tokio::select;
 use tokio::sync::watch;
 use tokio_util::codec::Framed;
 use tracing::{error, warn};
-use crate::protocol::list::lrem::LRemCommand;
-use crate::protocol::list::lset::LSetCommand;
-use crate::protocol::set::sismember::SIsMemberCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -285,6 +286,7 @@ impl CommandFactory {
         factory.register("HGETALL", HGetAllCommand);
         factory.register("HKEYS", HKeysCommand);
         factory.register("HVALS", HValsCommand);
+        factory.register("HEXISTS", HExistsCommand);
         // Set commands
         factory.register("SADD", SAddCommand);
         factory.register("SMEMBERS", SMembersCommand);

@@ -13,6 +13,9 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
+use crate::raft::types::core::mocha::mocha::MyValue;
+use crate::raft::types::core::mocha::read_command::ReadCommand;
+use crate::raft::types::core::value_object::ValueObject;
 
 /// Parsed HGETALL arguments
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,6 +26,34 @@ pub struct HGetAllParams {
 impl Display for HGetAllParams {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "HGETALL {}", String::from_utf8_lossy(&self.key))
+    }
+}
+impl ReadCommand for HGetAllParams {
+    fn key(&self) -> &Bytes {
+        &self.key
+    }
+
+    fn execute(&self, value: Option<MyValue>) -> Value {
+        match value {
+            None => Value::Map(Vec::new()),
+            Some(v) => match v.data {
+                ValueObject::Hash(map) => {
+                    let guard = map.lock();
+                    let result = guard
+                        .iter()
+                        .map(|(field, value)| {
+                            (
+                                Value::BulkString(Some(field.clone())),
+                                Value::BulkString(Some(value.to_bytes())),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+
+                    Value::Map(result)
+                }
+                _ => CacheCatError::from(ProtocolError::WrongType).into(),
+            },
+        }
     }
 }
 
