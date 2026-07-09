@@ -112,7 +112,7 @@ impl Display for PExpireReq {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "ExpireReq {{ key: {}, seconds: {}, condition: {:?} }}",
+            "ExpireReq {{ key: {}, milliseconds: {}, condition: {:?} }}",
             String::from_utf8_lossy(&self.key),
             self.expires_at,
             self.condition

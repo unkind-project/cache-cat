@@ -1,10 +1,12 @@
-use crate::protocol::key::del::DelParams;
 use crate::protocol::key::rename::RenameParams;
 use crate::protocol::key::renamenx::RenameNxParams;
 use crate::protocol::lua::eval::EvalParams;
 use crate::protocol::string::mset::MsetParams;
 use crate::protocol::string::set::SetParams;
+use crate::protocol::string::setex::SetExParams;
+use crate::protocol::string::setnx::SetNxParams;
 use crate::protocol::transaction::exec::ExecParams;
+use crate::protocol::{key::del::DelParams, string::psetex::PSetExParams};
 use crate::raft::types::entry::bae_operation::BaseOperation;
 use crate::raft::types::entry::read_operation::ReadOperation;
 use crate::utils::merge_u64;
@@ -55,6 +57,9 @@ impl Request {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RedisOperation {
     RedisSet(SetParams),
+    RedisSetNx(SetNxParams),
+    RedisSetEx(SetExParams),
+    RedisPSetEx(PSetExParams),
     RedisMset(MsetParams),
     RedisDel(DelParams),
     RedisRename(RenameParams),
@@ -93,7 +98,9 @@ impl fmt::Display for Request {
                 BaseOperation::LPush(req) => write!(f, "LPush: {}", req),
                 BaseOperation::Del(req) => write!(f, "DEL: {}", req),
                 BaseOperation::Incr(req) => write!(f, "Incr: {}", req),
-                BaseOperation::PExpire(req) => write!(f, "Expire: {}", req),
+                BaseOperation::IncrBy(req) => write!(f, "IncrBy: {}", req),
+                BaseOperation::Expire(req) => write!(f, "Expire: {}", req),
+                BaseOperation::PExpire(req) => write!(f, "PExpire: {}", req),
                 BaseOperation::Append(req) => write!(f, "Append: {}", req),
                 BaseOperation::HSet(req) => write!(f, "HSet: {}", req),
                 BaseOperation::ZAdd(req) => write!(f, "ZAdd: {}", req),
@@ -112,6 +119,9 @@ impl fmt::Display for Request {
             },
             Operation::Redis(op) => match op {
                 RedisOperation::RedisSet(req) => write!(f, "RedisSet: {}", req),
+                RedisOperation::RedisSetNx(req) => write!(f, "RedisSetNx: {}", req),
+                RedisOperation::RedisSetEx(req) => write!(f, "RedisSetEx: {}", req),
+                RedisOperation::RedisPSetEx(req) => write!(f, "RedisPSetEx: {}", req),
                 RedisOperation::RedisMset(req) => write!(f, "RedisMset: {}", req),
                 RedisOperation::RedisDel(req) => write!(f, "RedisDel: {}", req),
                 RedisOperation::RedisRename(req) => write!(f, "RedisRename: {}", req),

@@ -4,15 +4,38 @@ use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::request::Operation;
-use crate::raft::types::entry::request::RedisOperation::RedisSet;
+use crate::raft::types::entry::request::RedisOperation::RedisPSetEx;
 use async_trait::async_trait;
+use bytes::Bytes;
+use serde::{Deserialize, Serialize};
+use std::fmt;
 
-use super::set::{Expiration, SetParams};
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PSetExParams {
+    /// The key to set
+    pub key: Bytes,
+    /// The value to set
+    pub value: Bytes,
+    /// Expiration time
+    pub expiration: u64,
+}
+
+impl fmt::Display for PSetExParams {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "PSetEx {} {} {}",
+            String::from_utf8_lossy(&self.key),
+            String::from_utf8_lossy(&self.value),
+            self.expiration
+        )
+    }
+}
 
 pub struct PSetExCommand;
 
 impl PSetExCommand {
-    fn parse(items: &[Value]) -> Result<SetParams, ProtocolError> {
+    fn parse(items: &[Value]) -> Result<PSetExParams, ProtocolError> {
         // PSETEX key milliseconds value
         if items.len() != 4 {
             return Err(ProtocolError::WrongArgCount("psetex"));
@@ -28,12 +51,10 @@ impl PSetExCommand {
             .string_bytes_clone()
             .ok_or(ProtocolError::InvalidArgument("value"))?;
 
-        Ok(SetParams {
+        Ok(PSetExParams {
             key,
             value,
-            mode: None,
-            get: false,
-            expiration: Some(Expiration::Px(milliseconds)),
+            expiration: milliseconds,
         })
     }
 }
@@ -41,7 +62,7 @@ impl PSetExCommand {
 impl RaftCommand for PSetExCommand {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError> {
         let params = Self::parse(items)?;
-        Ok(Operation::Redis(RedisSet(params)))
+        Ok(Operation::Redis(RedisPSetEx(params)))
     }
 }
 
@@ -60,7 +81,7 @@ impl Command for PSetExCommand {
         let params = Self::parse(items)?;
         server
             .app
-            .write(Operation::Redis(RedisSet(params)), client.db_number)
+            .write(Operation::Redis(RedisPSetEx(params)), client.db_number)
             .await?;
 
         Ok(Value::ok())

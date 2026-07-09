@@ -4,15 +4,38 @@ use crate::protocol::raft_command::RaftCommand;
 use crate::raft::network::redis_server::RedisServer;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::request::Operation;
-use crate::raft::types::entry::request::RedisOperation::RedisSet;
+use crate::raft::types::entry::request::RedisOperation::RedisSetEx;
 use async_trait::async_trait;
+use bytes::Bytes;
+use serde::{Deserialize, Serialize};
+use std::fmt;
 
-use super::set::{Expiration, SetParams};
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SetExParams {
+    /// The key to set
+    pub key: Bytes,
+    /// The value to set
+    pub value: Bytes,
+    /// Expiration time
+    pub expiration: u64,
+}
+
+impl fmt::Display for SetExParams {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "SetEx {} {} {}",
+            String::from_utf8_lossy(&self.key),
+            String::from_utf8_lossy(&self.value),
+            self.expiration
+        )
+    }
+}
 
 pub struct SetExCommand;
 
 impl SetExCommand {
-    fn parse(items: &[Value]) -> Result<SetParams, ProtocolError> {
+    fn parse(items: &[Value]) -> Result<SetExParams, ProtocolError> {
         // SETEX key seconds value
         if items.len() != 4 {
             return Err(ProtocolError::WrongArgCount("setex"));
@@ -28,13 +51,11 @@ impl SetExCommand {
             .string_bytes_clone()
             .ok_or(ProtocolError::InvalidArgument("value"))?;
 
-        Ok(SetParams {
+        Ok(SetExParams {
             key,
             value,
-            mode: None,
-            get: false,
             // Convert seconds to milliseconds, continue reusing Px
-            expiration: Some(Expiration::Px(seconds * 1000)),
+            expiration: seconds * 1000,
         })
     }
 }
@@ -42,7 +63,7 @@ impl SetExCommand {
 impl RaftCommand for SetExCommand {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError> {
         let params = Self::parse(items)?;
-        Ok(Operation::Redis(RedisSet(params)))
+        Ok(Operation::Redis(RedisSetEx(params)))
     }
 }
 
@@ -62,7 +83,7 @@ impl Command for SetExCommand {
         let params = Self::parse(items)?;
         server
             .app
-            .write(Operation::Redis(RedisSet(params)), client.db_number)
+            .write(Operation::Redis(RedisSetEx(params)), client.db_number)
             .await?;
 
         Ok(Value::ok())
