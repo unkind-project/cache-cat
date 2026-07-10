@@ -66,7 +66,8 @@ pub fn base_request(
         BaseOperation::RPush(param) => my_cache.r_push(param, update),
         BaseOperation::RPop(param) => my_cache.r_pop(param, update),
         BaseOperation::LRem(param) => my_cache.l_rem(param, update),
-        BaseOperation::LSet(papaya) => my_cache.l_set(papaya, update),
+        BaseOperation::LSet(param) => my_cache.l_set(param, update),
+        BaseOperation::DecrBy(param) => my_cache.decr_by(param, update),
     }
 }
 

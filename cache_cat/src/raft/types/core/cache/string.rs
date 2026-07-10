@@ -11,6 +11,7 @@ use crate::raft::types::core::mocha::mocha::{MyCache, Update};
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::core::value_object::ValueObject;
 use bytes::Bytes;
+use crate::protocol::string::decrby::DecrByReq;
 
 impl MyCache {
     pub fn redis_mset(&self, params: MsetParams, update: &mut Update<'_>, external: bool) -> Value {
@@ -229,6 +230,10 @@ impl MyCache {
     // If it's not a string, report an error;
     // if it's a string, append; if there's no value, create one
     pub fn append(&self, param: AppendReq, update: &mut Update) -> Value {
+        self.execute_compute(param, update)
+    }
+
+    pub fn decr_by(&self, param: DecrByReq, update: &mut Update) -> Value {
         self.execute_compute(param, update)
     }
 }

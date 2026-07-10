@@ -51,6 +51,7 @@ use crate::raft::types::entry::request::Operation;
 use std::collections::HashMap;
 use std::fmt;
 use tracing::warn;
+use crate::protocol::string::decrby::DecrByCommand;
 
 pub trait RaftCommand: Send + Sync {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError>;
@@ -143,6 +144,7 @@ impl RaftCommandFactory {
         factory.register("LSET", LSetCommand);
         factory.register("SISMEMBER", SIsMemberCommand);
         factory.register("HEXISTS", HExistsCommand);
+        factory.register("DECRBY", DecrByCommand);
         factory
     }
 

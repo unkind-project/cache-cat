@@ -24,6 +24,7 @@ use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
+use crate::protocol::string::decrby::DecrByReq;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BaseOperation {
@@ -41,6 +42,7 @@ pub enum BaseOperation {
     IncrBy(IncrByReq),
     Append(AppendReq),
     SetBit(SetBitReq),
+    DecrBy(DecrByReq),
     // list
     LPush(LPushReq),
     RPush(RPushReq),

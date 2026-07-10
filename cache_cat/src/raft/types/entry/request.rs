@@ -116,6 +116,7 @@ impl fmt::Display for Request {
                 BaseOperation::RPop(req) => write!(f, "RPop: {}", req),
                 BaseOperation::LRem(req) => write!(f, "LRem: {}", req),
                 BaseOperation::LSet(req) => write!(f, "LSet: {}", req),
+                BaseOperation::DecrBy(req) => write!(f, "DecrBy: {}", req),
             },
             Operation::Redis(op) => match op {
                 RedisOperation::RedisSet(req) => write!(f, "RedisSet: {}", req),

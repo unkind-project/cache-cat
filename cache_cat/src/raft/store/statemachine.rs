@@ -188,7 +188,7 @@ impl RaftStateMachine<TypeConfig> for StateMachineStore {
                     let write_clock = st.set_write_clock(time);
                     update.db_number = db_number;
                     update.write_clock = write_clock;
-                    //只有哲理external为true因为是外部调用
+                    //只有external为true因为是外部调用
                     do_request(&self.data.kvs, req.operation, &mut update, true)
                 }
                 EntryPayload::Membership(mem) => {

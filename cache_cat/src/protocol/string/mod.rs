@@ -1,11 +1,12 @@
 pub mod append;
+pub mod decrby;
 pub mod get;
 pub mod incr;
 pub mod incrby;
+pub mod len;
 pub mod mget;
 pub mod mset;
 pub mod psetex;
 pub mod set;
 pub mod setex;
 pub mod setnx;
-pub mod len;
