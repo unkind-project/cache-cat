@@ -383,7 +383,7 @@ where
     {
         self.get_entry(key).map(|entry| entry.value)
     }
-    pub fn get_with_read_clock<Q>(&self, key: &Q, read_clock: Option<u64>) -> Option<V>
+    pub fn get_with_read_clock<Q>(&self, key: &Q, read_clock: Option<u64>) -> Option<EntrySnapshot<V>>
     where
         K: Borrow<Q>,
         Q: ?Sized + Hash + Ord,
@@ -397,17 +397,17 @@ where
                 match my_value.expire_at {
                     Some(inner) => {
                         match read_clock {
-                            None => Some(my_value.value),
+                            None => Some(my_value),
                             Some(time) => {
                                 if inner < time {
                                     // 写逻辑时钟获取到了但是读逻辑时钟没有获取到
                                     return None;
                                 }
-                                Some(my_value.value)
+                                Some(my_value)
                             }
                         }
                     }
-                    None => Some(my_value.value),
+                    None => Some(my_value),
                 }
             }
         }

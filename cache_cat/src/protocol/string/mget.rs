@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::mocha::EntrySnapshot;
 
 /// Parameters for MGET command
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,14 +80,14 @@ impl MultiReadCommand for MgetParams {
         &self.keys
     }
 
-    fn execute(&self, values: Vec<Option<MyValue>>) -> Value {
+    fn execute(&self, values: Vec<Option<EntrySnapshot<MyValue>>>) -> Value {
         let mut results = Vec::with_capacity(values.len());
 
         for value in values {
             results.push(match value {
                 None => Value::BulkString(None),
 
-                Some(v) => match v.data {
+                Some(v) => match v.value.data {
                     ValueObject::Int(int_value) => {
                         Value::BulkString(Some(int_value.to_string().into()))
                     }

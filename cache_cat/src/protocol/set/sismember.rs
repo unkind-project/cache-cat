@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::mocha::EntrySnapshot;
 
 pub struct SIsMemberCommand;
 
@@ -36,10 +37,10 @@ impl ReadCommand for SIsMemberParams {
         &self.key
     }
 
-    fn execute(&self, value: Option<MyValue>) -> Value {
+    fn execute(&self, value: Option<EntrySnapshot<MyValue>>) -> Value {
         match value {
             None => Value::Integer(0),
-            Some(v) => match v.data {
+            Some(v) => match v.value.data {
                 ValueObject::Set(set) => {
                     let guard = set.lock();
 

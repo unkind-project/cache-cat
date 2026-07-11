@@ -1,11 +1,12 @@
 use crate::raft::types::core::mocha::mocha::{MyCache, MyValue};
 use crate::raft::types::core::response_value::Value;
 use bytes::Bytes;
+use crate::mocha::EntrySnapshot;
 
 pub trait ReadCommand: Send + 'static {
     fn key(&self) -> &Bytes;
 
-    fn execute(&self, value: Option<MyValue>) -> Value;
+    fn execute(&self, value: Option<EntrySnapshot<MyValue>>) -> Value;
 }
 
 impl MyCache {
@@ -28,7 +29,7 @@ impl MyCache {
 pub trait MultiReadCommand: Send + 'static {
     fn keys(&self) -> &Vec<Bytes>;
 
-    fn execute(&self, values: Vec<Option<MyValue>>) -> Value;
+    fn execute(&self, values: Vec<Option<EntrySnapshot<MyValue>>>) -> Value;
 }
 
 impl MyCache {

@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::mocha::EntrySnapshot;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetBitParams {
@@ -32,10 +33,10 @@ impl ReadCommand for GetBitParams {
         &self.key
     }
 
-    fn execute(&self, value: Option<MyValue>) -> Value {
+    fn execute(&self, value: Option<EntrySnapshot<MyValue>>) -> Value {
         let bytes: Vec<u8> = match value {
             None => return Value::Integer(0),
-            Some(value) => match value.data {
+            Some(value) => match value.value.data {
                 ValueObject::String(s) => s.to_vec(),
                 ValueObject::Int(i) => i.to_string().into_bytes(),
                 _ => return ProtocolError::WrongType.into(),

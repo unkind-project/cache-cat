@@ -25,6 +25,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::mocha::EntrySnapshot;
 
 /// ZRANGE command handler
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,10 +58,10 @@ impl ReadCommand for ZRangeParams {
         &self.key
     }
 
-    fn execute(&self, value: Option<MyValue>) -> Value {
+    fn execute(&self, value: Option<EntrySnapshot<MyValue>>) -> Value {
         match value {
             None => Value::Array(Some(vec![])), // 空集合返回空数组
-            Some(v) => match v.data {
+            Some(v) => match v.value.data {
                 ZSet(list) => {
                     let res = list.lock().zrange(self.start, self.stop, self.with_scores);
 

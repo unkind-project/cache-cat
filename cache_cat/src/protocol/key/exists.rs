@@ -15,6 +15,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::mocha::EntrySnapshot;
 
 /// EXISTS command parameters
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -33,7 +34,7 @@ impl MultiReadCommand for ExistsParams {
         &self.keys
     }
 
-    fn execute(&self, values: Vec<Option<MyValue>>) -> Value {
+    fn execute(&self, values: Vec<Option<EntrySnapshot<MyValue>>>) -> Value {
         let count = values.into_iter().filter(|value| value.is_some()).count();
 
         Value::Integer(count as i64)

@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::mocha::EntrySnapshot;
 
 /// ZRANGEBYSCORE command handler
 ///
@@ -44,10 +45,10 @@ impl ReadCommand for ZRangeByScoreParams {
         &self.key
     }
 
-    fn execute(&self, value: Option<MyValue>) -> Value {
+    fn execute(&self, value: Option<EntrySnapshot<MyValue>>) -> Value {
         match value {
             None => Value::Array(Some(vec![])),
-            Some(v) => match v.data {
+            Some(v) => match v.value.data {
                 ZSet(list) => {
                     let zset = list.lock();
                     let res = zset.zrangebyscore(self.min, self.max, self.with_scores, self.limit);

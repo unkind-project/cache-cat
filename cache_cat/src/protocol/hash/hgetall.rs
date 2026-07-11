@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
+use crate::mocha::EntrySnapshot;
 use crate::raft::types::core::mocha::mocha::MyValue;
 use crate::raft::types::core::mocha::read_command::ReadCommand;
 use crate::raft::types::core::value_object::ValueObject;
@@ -33,10 +34,10 @@ impl ReadCommand for HGetAllParams {
         &self.key
     }
 
-    fn execute(&self, value: Option<MyValue>) -> Value {
+    fn execute(&self, value: Option<EntrySnapshot<MyValue>>) -> Value {
         match value {
             None => Value::Map(Vec::new()),
-            Some(v) => match v.data {
+            Some(v) => match v.value.data {
                 ValueObject::Hash(map) => {
                     let guard = map.lock();
                     let result = guard

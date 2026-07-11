@@ -37,7 +37,7 @@ Zookeeper方案缺点(下文方案)
 
 ## 快照策略
 
-> 总思想类似Zookeeper，将所有操作变成一个CAS操作。对应Dragonfly中的Relaxed快照策略。
+> 下文是Cache-cat原创的快照策略，总思想类似Zookeeper，将所有操作变成一个CAS操作。对应Dragonfly中的Relaxed快照策略。Zookeeper方案有个缺点，RAFT的快照中的快照语义需要是一个时刻的瞬时快照。
 
 其中map中的每个value都可以被试做为一个原子访问单元。对这个value的任何操作都是原子的，且读写并发的。
 

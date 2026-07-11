@@ -21,6 +21,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::mocha::EntrySnapshot;
 
 /// TYPE command handler
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,11 +60,11 @@ impl ReadCommand for TypeParams {
         &self.key
     }
 
-    fn execute(&self, value: Option<MyValue>) -> Value {
+    fn execute(&self, value: Option<EntrySnapshot<MyValue>>) -> Value {
         match value {
             None => Value::SimpleString("none".to_string()),
             Some(v) => {
-                let type_str = value_object_to_type_string(&v.data);
+                let type_str = value_object_to_type_string(&v.value.data);
                 Value::SimpleString(type_str.to_string())
             }
         }

@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::mocha::EntrySnapshot;
 
 /// Parameters for STRLEN command
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -46,10 +47,10 @@ impl ReadCommand for StrLenParams {
         &self.key
     }
 
-    fn execute(&self, value: Option<MyValue>) -> Value {
+    fn execute(&self, value: Option<EntrySnapshot<MyValue>>) -> Value {
         let len = match value {
             None => 0,
-            Some(v) => match v.data {
+            Some(v) => match v.value.data {
                 ValueObject::String(ref bytes) => bytes.len(),
                 ValueObject::Int(ref i) => i.to_string().len(),
                 _ => return ProtocolError::WrongType.into(),
