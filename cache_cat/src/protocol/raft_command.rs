@@ -51,6 +51,7 @@ use crate::raft::types::entry::request::Operation;
 use std::collections::HashMap;
 use std::fmt;
 use tracing::warn;
+use crate::protocol::key::pttl::PTtlCommand;
 use crate::protocol::string::decrby::DecrByCommand;
 
 pub trait RaftCommand: Send + Sync {
@@ -145,6 +146,8 @@ impl RaftCommandFactory {
         factory.register("SISMEMBER", SIsMemberCommand);
         factory.register("HEXISTS", HExistsCommand);
         factory.register("DECRBY", DecrByCommand);
+        factory.register("PTTL", PTtlCommand);
+
         factory
     }
 

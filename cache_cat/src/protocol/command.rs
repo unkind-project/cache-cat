@@ -85,6 +85,7 @@ use tokio::select;
 use tokio::sync::watch;
 use tokio_util::codec::Framed;
 use tracing::{error, warn};
+use crate::protocol::key::pttl::PTtlCommand;
 use crate::protocol::string::decrby::{DecrByCommand, DecrByReq};
 
 #[async_trait]
@@ -269,6 +270,7 @@ impl CommandFactory {
         factory.register("STRLEN", StrLenCommand);
         factory.register("TYPE", TypeCommand);
         factory.register("DECRBY", DecrByCommand);
+        factory.register("PTTL", PTtlCommand);
         // List commands
         factory.register("LPUSH", LPushCommand);
         factory.register("RPUSH", RPushCommand);
