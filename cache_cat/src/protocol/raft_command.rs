@@ -14,6 +14,7 @@ use crate::protocol::key::exists::ExistsCommand;
 use crate::protocol::key::expire::ExpireCommand;
 use crate::protocol::key::persist::PersistCommand;
 use crate::protocol::key::pexpire::PExpireCommand;
+use crate::protocol::key::pttl::PTtlCommand;
 use crate::protocol::key::rename::RenameCommand;
 use crate::protocol::key::renamenx::RenameNxCommand;
 use crate::protocol::key::type_::TypeCommand;
@@ -32,6 +33,7 @@ use crate::protocol::set::sismember::SIsMemberCommand;
 use crate::protocol::set::smembers::SMembersCommand;
 use crate::protocol::set::srem::SRemCommand;
 use crate::protocol::string::append::AppendCommand;
+use crate::protocol::string::decrby::DecrByCommand;
 use crate::protocol::string::get::GetCommand;
 use crate::protocol::string::incr::IncrCommand;
 use crate::protocol::string::incrby::IncrByCommand;
@@ -51,8 +53,7 @@ use crate::raft::types::entry::request::Operation;
 use std::collections::HashMap;
 use std::fmt;
 use tracing::warn;
-use crate::protocol::key::pttl::PTtlCommand;
-use crate::protocol::string::decrby::DecrByCommand;
+use crate::protocol::key::ttl::TtlCommand;
 
 pub trait RaftCommand: Send + Sync {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError>;
@@ -147,7 +148,7 @@ impl RaftCommandFactory {
         factory.register("HEXISTS", HExistsCommand);
         factory.register("DECRBY", DecrByCommand);
         factory.register("PTTL", PTtlCommand);
-
+        factory.register("TTL", TtlCommand);
         factory
     }
 

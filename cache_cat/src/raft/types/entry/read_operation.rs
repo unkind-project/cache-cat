@@ -7,6 +7,7 @@ use crate::protocol::hash::hmget::HMGetParams;
 use crate::protocol::hash::hvals::HValsParams;
 use crate::protocol::key::exists::ExistsParams;
 use crate::protocol::key::pttl::PTtlParams;
+use crate::protocol::key::ttl::TtlParams;
 use crate::protocol::key::type_::TypeParams;
 use crate::protocol::list::lindex::LIndexParams;
 use crate::protocol::list::llen::LLenParams;
@@ -42,4 +43,5 @@ pub enum ReadOperation {
     SIsMember(SIsMemberParams),
     HExists(HExistsParams),
     PTtl(PTtlParams),
+    Ttl(TtlParams),
 }
