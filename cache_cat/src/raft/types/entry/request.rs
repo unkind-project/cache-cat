@@ -93,6 +93,7 @@ impl fmt::Display for Request {
                 ReadOperation::HExists(req) => write!(f, "HExists: {}", req),
                 ReadOperation::PTtl(req) => write!(f, "Pttl: {}", req),
                 ReadOperation::Ttl(req) => write!(f, "Ttl: {}", req),
+                ReadOperation::HLen(req) => write!(f, "HLen: {}", req),
             },
             Operation::Base(op) => match op {
                 BaseOperation::Empty => write!(f, "None"),

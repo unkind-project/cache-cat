@@ -3,6 +3,7 @@ use crate::protocol::hash::hexists::HExistsParams;
 use crate::protocol::hash::hget::HGetParams;
 use crate::protocol::hash::hgetall::HGetAllParams;
 use crate::protocol::hash::hkeys::HKeysParams;
+use crate::protocol::hash::hlen::HLenParams;
 use crate::protocol::hash::hmget::HMGetParams;
 use crate::protocol::hash::hvals::HValsParams;
 use crate::protocol::key::exists::ExistsParams;
@@ -44,4 +45,5 @@ pub enum ReadOperation {
     HExists(HExistsParams),
     PTtl(PTtlParams),
     Ttl(TtlParams),
+    HLen(HLenParams),
 }

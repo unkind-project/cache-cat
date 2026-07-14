@@ -32,6 +32,7 @@ pub fn read_request(
         ReadOperation::HExists(param) => my_cache.execute_read(param, db_number, read_clock),
         ReadOperation::PTtl(param) => my_cache.execute_read(param, db_number, read_clock),
         ReadOperation::Ttl(param) => my_cache.execute_read(param, db_number, read_clock),
+        ReadOperation::HLen(param) => my_cache.execute_read(param, db_number, read_clock),
     }
 }
 
