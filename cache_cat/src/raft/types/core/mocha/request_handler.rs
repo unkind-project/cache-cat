@@ -71,6 +71,7 @@ pub fn base_request(
         BaseOperation::LRem(param) => my_cache.l_rem(param, update),
         BaseOperation::LSet(param) => my_cache.l_set(param, update),
         BaseOperation::DecrBy(param) => my_cache.decr_by(param, update),
+        BaseOperation::HSetNx(param) => my_cache.h_set_nx(param, update),
     }
 }
 

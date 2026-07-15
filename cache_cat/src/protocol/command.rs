@@ -88,6 +88,7 @@ use tokio::sync::watch;
 use tokio_util::codec::Framed;
 use tracing::{error, warn};
 use crate::protocol::hash::hlen::HLenCommand;
+use crate::protocol::hash::hsetnx::HSetNxCommand;
 use crate::protocol::key::ttl::TtlCommand;
 
 #[async_trait]
@@ -296,6 +297,7 @@ impl CommandFactory {
         factory.register("HVALS", HValsCommand);
         factory.register("HEXISTS", HExistsCommand);
         factory.register("HLEN", HLenCommand);
+        factory.register("HSETNX", HSetNxCommand);
         // Set commands
         factory.register("SADD", SAddCommand);
         factory.register("SMEMBERS", SMembersCommand);

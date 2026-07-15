@@ -9,6 +9,7 @@ use crate::protocol::hash::hkeys::HKeysCommand;
 use crate::protocol::hash::hlen::HLenCommand;
 use crate::protocol::hash::hmget::HMGetCommand;
 use crate::protocol::hash::hset::HSetCommand;
+use crate::protocol::hash::hsetnx::HSetNxCommand;
 use crate::protocol::hash::hvals::HValsCommand;
 use crate::protocol::key::del::DelCommand;
 use crate::protocol::key::exists::ExistsCommand;
@@ -151,6 +152,7 @@ impl RaftCommandFactory {
         factory.register("PTTL", PTtlCommand);
         factory.register("TTL", TtlCommand);
         factory.register("HLEN", HLenCommand);
+        factory.register("HSETNX", HSetNxCommand);
         factory
     }
 

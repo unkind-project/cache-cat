@@ -135,4 +135,5 @@ print(r.pttl("test22"))
 print(r.ttl("test22"))
 
 r.hset("test23", "test34", "test1")
+print(r.setnx("test23", "test2"))
 print(r.hlen("test23"))

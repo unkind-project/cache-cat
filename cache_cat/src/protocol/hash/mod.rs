@@ -8,3 +8,4 @@ pub mod hlen;
 pub mod hmget;
 pub mod hset;
 pub mod hvals;
+pub mod hsetnx;
