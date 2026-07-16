@@ -11,6 +11,7 @@ use crate::raft::types::core::mocha::mocha::{MyCache, Update};
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::core::value_object::ValueObject;
 use bytes::Bytes;
+use crate::protocol::string::decr::DecrReq;
 use crate::protocol::string::decrby::DecrByReq;
 
 impl MyCache {
@@ -220,6 +221,9 @@ impl MyCache {
     }
 
     pub fn incr(&self, param: IncrReq, update: &mut Update) -> Value {
+        self.execute_compute(param, update)
+    }
+    pub fn decr(&self, param: DecrReq, update: &mut Update) -> Value {
         self.execute_compute(param, update)
     }
 

@@ -16,6 +16,7 @@ use crate::protocol::list::rpush::RPushReq;
 use crate::protocol::set::sadd::SAddReq;
 use crate::protocol::set::srem::SRemReq;
 use crate::protocol::string::append::AppendReq;
+use crate::protocol::string::decr::DecrReq;
 use crate::protocol::string::decrby::DecrByReq;
 use crate::protocol::string::incr::IncrReq;
 use crate::protocol::string::incrby::IncrByReq;
@@ -44,6 +45,7 @@ pub enum BaseOperation {
     Append(AppendReq),
     SetBit(SetBitReq),
     DecrBy(DecrByReq),
+    Decr(DecrReq),
     // list
     LPush(LPushReq),
     RPush(RPushReq),

@@ -90,6 +90,7 @@ use tracing::{error, warn};
 use crate::protocol::hash::hlen::HLenCommand;
 use crate::protocol::hash::hsetnx::HSetNxCommand;
 use crate::protocol::key::ttl::TtlCommand;
+use crate::protocol::string::decr::DecrCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -275,7 +276,7 @@ impl CommandFactory {
         factory.register("DECRBY", DecrByCommand);
         factory.register("PTTL", PTtlCommand);
         factory.register("TTL", TtlCommand);
-
+        factory.register("DECR", DecrCommand);
         // List commands
         factory.register("LPUSH", LPushCommand);
         factory.register("RPUSH", RPushCommand);

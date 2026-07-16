@@ -1,4 +1,5 @@
 pub mod append;
+pub mod decr;
 pub mod decrby;
 pub mod get;
 pub mod incr;

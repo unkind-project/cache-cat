@@ -36,6 +36,7 @@ use crate::protocol::set::sismember::SIsMemberCommand;
 use crate::protocol::set::smembers::SMembersCommand;
 use crate::protocol::set::srem::SRemCommand;
 use crate::protocol::string::append::AppendCommand;
+use crate::protocol::string::decr::DecrCommand;
 use crate::protocol::string::decrby::DecrByCommand;
 use crate::protocol::string::get::GetCommand;
 use crate::protocol::string::incr::IncrCommand;
@@ -153,6 +154,7 @@ impl RaftCommandFactory {
         factory.register("TTL", TtlCommand);
         factory.register("HLEN", HLenCommand);
         factory.register("HSETNX", HSetNxCommand);
+        factory.register("DECR", DecrCommand);
         factory
     }
 
