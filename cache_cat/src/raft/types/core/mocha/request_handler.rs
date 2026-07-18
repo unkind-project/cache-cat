@@ -73,6 +73,7 @@ pub fn base_request(
         BaseOperation::DecrBy(param) => my_cache.decr_by(param, update),
         BaseOperation::HSetNx(param) => my_cache.h_set_nx(param, update),
         BaseOperation::Decr(param) => my_cache.decr(param, update),
+        BaseOperation::ZRem(param) => my_cache.z_rem(param, update),
     }
 }
 
@@ -92,7 +93,7 @@ pub fn do_request(
             RedisOperation::RedisSetNx(param) => my_cache.redis_setnx(param, update),
             RedisOperation::RedisSetEx(param) => my_cache.redis_setex(param, update),
             RedisOperation::RedisPSetEx(param) => my_cache.redis_psetex(param, update),
-            RedisOperation::RedisGetSet(param) =>my_cache.redis_get_set(param, update),
+            RedisOperation::RedisGetSet(param) => my_cache.redis_get_set(param, update),
             RedisOperation::RedisMset(param) => my_cache.redis_mset(param, update, external),
             RedisOperation::RedisRename(param) => my_cache.redis_rename(param, update, external),
             RedisOperation::RedisRenameNx(param) => {
@@ -116,7 +117,7 @@ pub fn do_request(
                     vec.push(do_request(my_cache, operation, update, false));
                 }
                 Value::Array(Some(vec))
-            },
+            }
         },
     }
 }

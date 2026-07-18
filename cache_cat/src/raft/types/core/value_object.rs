@@ -150,6 +150,28 @@ impl SortedSet {
 
         result
     }
+    /// 删除指定的成员，返回实际删除的数量
+    /// 时间复杂度：O(M * log(N))，M 是要删除的成员数
+    pub fn zrem(&mut self, members: &[Bytes]) -> i64 {
+        let mut removed = 0i64;
+
+        for member in members {
+            if let Some(score) = self.hash.remove(member) {
+                // 从 tree 中删除（tree 的 key 是 (score, member)）
+                self.tree.remove(&(OrderedFloat(score), member.clone()));
+                removed += 1;
+            }
+        }
+
+        removed
+    }
+
+
+    /// 检查集合是否为空
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.hash.is_empty()
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

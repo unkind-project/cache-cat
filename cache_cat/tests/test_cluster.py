@@ -143,3 +143,7 @@ r.decr("test24")
 print(r.get("test24"))
 print(r.getset("test24", "1"))
 print(r.get("test24"))
+
+r.zadd("my_zset", {"a": 1, "b": 2, "c": 3})
+r.zrem("my_zset", "a")
+print(r.zrange("my_zset", 0, -1))

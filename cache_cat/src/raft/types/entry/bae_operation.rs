@@ -22,6 +22,7 @@ use crate::protocol::string::incr::IncrReq;
 use crate::protocol::string::incrby::IncrByReq;
 use crate::protocol::string::set::SetReq;
 use crate::protocol::zset::zadd::ZAddReq;
+use crate::protocol::zset::zrem::ZRemReq;
 use crate::raft::types::core::value_object::ValueObject;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
@@ -60,6 +61,7 @@ pub enum BaseOperation {
     HSetNx(HSetNxReq),
     // zset
     ZAdd(ZAddReq),
+    ZRem(ZRemReq),
     // set
     SAdd(SAddReq),
     SRem(SRemReq),
