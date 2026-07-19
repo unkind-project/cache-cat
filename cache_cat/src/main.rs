@@ -153,16 +153,14 @@ fn print_msg(config: &Config) {
     println!("Redis Port: {}", config.redis.redis_port);
 }
 
+#[cfg(windows)]
 fn listen_ctrl_c() -> std::io::Result<impl Future<Output = Option<()>>> {
-    let mut listener = cfg_select! {
-        windows => {
-            signal::windows::ctrl_c()
-        }
+    let mut listener = signal::windows::ctrl_c()?;
+    Ok(async move { listener.recv().await })
+}
 
-        unix => {
-            signal::unix::ctrl_c()
-        }
-    }?;
-
+#[cfg(unix)]
+fn listen_ctrl_c() -> std::io::Result<impl Future<Output = Option<()>>> {
+    let mut listener = signal::unix::ctrl_c()?;
     Ok(async move { listener.recv().await })
 }
