@@ -26,56 +26,73 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    let (raft_node, (shutdown_tx, mut shutdown_rx)) = RaftNodeBuilder::build(&config).await?;
+    let (raft_node, (shutdown_tx, mut shutdown_rx)) =
+        RaftNodeBuilder::build(&config).await?;
+
     print_msg(&config);
+
     // if config.node_id == 1 {
     //     let app_clone = raft_node.app.clone();
     //     tokio::spawn(async move {
     //         benchmark_requests(app_clone).await;
     //     });
     // }
-    // Wait for Ctrl+C
 
-    if let Ok(listener) = listen_ctrl_c() {
+    // 后台监听 Ctrl+C
+    {
+        let shutdown_tx = shutdown_tx.clone();
+
         spawn(async move {
             let mut shutdown_rx = shutdown_tx.subscribe();
+
             select! {
                 _ = shutdown_rx.recv() => {
-                    // do nothing and cancel the listen of ctrl-c
+                    // 已收到关闭通知，退出监听任务
                 }
 
-                _ = listener => {
-                    info!("Received Ctrl+C");
-                    let _ = shutdown_tx.send(());
+                result = tokio::signal::ctrl_c() => {
+                    match result {
+                        Ok(()) => {
+                            info!("Received Ctrl+C");
+                            let _ = shutdown_tx.send(());
+                        }
+                        Err(e) => {
+                            error!("Failed to listen for Ctrl+C: {}", e);
+                        }
+                    }
                 }
             }
         });
-        info!("Press Ctrl+C to shutdown...");
-    } else {
-        warn!("Failed to register listener for Ctrl-C")
     }
 
+    info!("Press Ctrl+C to shutdown...");
+
+    // 等待关闭信号
     let _ = shutdown_rx.recv().await;
     info!("Received shutdown signal");
 
     info!("Shutting down Raft node...");
-    if let Ok(listener) = listen_ctrl_c() {
-        info!("NOTE: You can press Ctrl-C to force shutdown");
-        select! {
-            _ = listener => {
-                warn!("Received Ctrl+C, force shutdown the node")
-            }
+    info!("NOTE: You can press Ctrl+C again to force shutdown");
 
-            _ = raft_node.app.cluster.shutdown() => {
-                info!("Raft node shutdown successfully")
+    select! {
+        result = tokio::signal::ctrl_c() => {
+            match result {
+                Ok(()) => {
+                    warn!("Received second Ctrl+C, force shutdown");
+                }
+                Err(e) => {
+                    error!("Failed to listen for Ctrl+C: {}", e);
+                }
             }
         }
-    } else {
-        let _ = raft_node.app.cluster.shutdown().await;
-        info!("Raft node shutdown successfully")
+
+        _ = raft_node.app.cluster.shutdown() => {
+            info!("Raft node shutdown successfully");
+        }
     }
 
     info!("Server shutdown complete");
+
     Ok(())
 }
 
@@ -153,14 +170,3 @@ fn print_msg(config: &Config) {
     println!("Redis Port: {}", config.redis.redis_port);
 }
 
-#[cfg(windows)]
-fn listen_ctrl_c() -> std::io::Result<impl Future<Output = Option<()>>> {
-    let mut listener = signal::windows::ctrl_c()?;
-    Ok(async move { listener.recv().await })
-}
-
-#[cfg(unix)]
-fn listen_ctrl_c() -> std::io::Result<impl Future<Output = Option<()>>> {
-    let mut listener = signal::unix::ctrl_c()?;
-    Ok(async move { listener.recv().await })
-}
