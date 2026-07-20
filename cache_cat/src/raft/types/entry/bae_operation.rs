@@ -11,6 +11,7 @@ use crate::protocol::list::lpop::LPopReq;
 use crate::protocol::list::lpush::LPushReq;
 use crate::protocol::list::lrem::LRemReq;
 use crate::protocol::list::lset::LSetReq;
+use crate::protocol::list::ltrim::LTrimReq;
 use crate::protocol::list::rpop::RPopReq;
 use crate::protocol::list::rpush::RPushReq;
 use crate::protocol::set::sadd::SAddReq;
@@ -54,6 +55,7 @@ pub enum BaseOperation {
     RPop(RPopReq),
     LRem(LRemReq),
     LSet(LSetReq),
+    LTrim(LTrimReq),
     //hash
     HSet(HSetReq),
     HIncr(HIncrReq),

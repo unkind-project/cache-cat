@@ -125,6 +125,7 @@ impl fmt::Display for Request {
                 BaseOperation::HSetNx(req) => write!(f, "HSetNx: {}", req),
                 BaseOperation::Decr(req) => write!(f, "Decr: {}", req),
                 BaseOperation::ZRem(req) => write!(f, "ZRem: {}", req),
+                BaseOperation::LTrim(req) => write!(f, "LTrim: {}", req),
             },
             Operation::Redis(op) => match op {
                 RedisOperation::RedisSet(req) => write!(f, "RedisSet: {}", req),

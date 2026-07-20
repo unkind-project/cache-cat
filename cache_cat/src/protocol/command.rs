@@ -93,6 +93,7 @@ use tokio::select;
 use tokio::sync::watch;
 use tokio_util::codec::Framed;
 use tracing::{error, warn};
+use crate::protocol::list::ltrim::LTrimCommand;
 
 #[async_trait]
 pub trait Command: Send + Sync {
@@ -290,6 +291,7 @@ impl CommandFactory {
         factory.register("LINDEX", LIndexCommand);
         factory.register("LREM", LRemCommand);
         factory.register("LSET", LSetCommand);
+        factory.register("LTRIM", LTrimCommand);
         // Hash commands
         factory.register("HSET", HSetCommand);
         factory.register("HGET", HGetCommand);

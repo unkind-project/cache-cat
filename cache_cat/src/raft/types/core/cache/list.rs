@@ -2,14 +2,13 @@ use crate::protocol::list::lpop::LPopReq;
 use crate::protocol::list::lpush::LPushReq;
 use crate::protocol::list::lrem::LRemReq;
 use crate::protocol::list::lset::LSetReq;
+use crate::protocol::list::ltrim::LTrimReq;
 use crate::protocol::list::rpop::RPopReq;
 use crate::protocol::list::rpush::RPushReq;
 use crate::raft::types::core::mocha::mocha::{MyCache, Update};
 use crate::raft::types::core::response_value::Value;
 
 impl MyCache {
-
-
     pub fn r_push(&self, param: RPushReq, update: &mut Update) -> Value {
         self.execute_compute(param, update)
     }
@@ -24,11 +23,15 @@ impl MyCache {
     pub fn r_pop(&self, param: RPopReq, update: &mut Update) -> Value {
         self.execute_compute(param, update)
     }
-    
+
     pub fn l_rem(&self, param: LRemReq, update: &mut Update) -> Value {
         self.execute_compute(param, update)
     }
     pub fn l_set(&self, param: LSetReq, update: &mut Update) -> Value {
+        self.execute_compute(param, update)
+    }
+
+    pub fn l_trim(&self, param: LTrimReq, update: &mut Update) -> Value {
         self.execute_compute(param, update)
     }
 }

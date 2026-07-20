@@ -74,6 +74,7 @@ pub fn base_request(
         BaseOperation::HSetNx(param) => my_cache.h_set_nx(param, update),
         BaseOperation::Decr(param) => my_cache.decr(param, update),
         BaseOperation::ZRem(param) => my_cache.z_rem(param, update),
+        BaseOperation::LTrim(param) => my_cache.l_trim(param, update),
     }
 }
 

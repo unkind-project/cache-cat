@@ -7,3 +7,4 @@ pub mod lrem;
 pub mod lset;
 pub mod rpop;
 pub mod rpush;
+pub mod ltrim;

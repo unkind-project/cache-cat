@@ -28,6 +28,7 @@ use crate::protocol::list::lpush::LPushCommand;
 use crate::protocol::list::lrange::LRangeCommand;
 use crate::protocol::list::lrem::LRemCommand;
 use crate::protocol::list::lset::LSetCommand;
+use crate::protocol::list::ltrim::LTrimCommand;
 use crate::protocol::list::rpop::RPopCommand;
 use crate::protocol::list::rpush::RPushCommand;
 use crate::protocol::lua::eval::EvalCommand;
@@ -52,13 +53,13 @@ use crate::protocol::string::setnx::SetNxCommand;
 use crate::protocol::zset::zadd::ZAddCommand;
 use crate::protocol::zset::zrange::ZRangeCommand;
 use crate::protocol::zset::zrangegetscore::ZRangeByScoreCommand;
+use crate::protocol::zset::zrem::ZRemCommand;
 use crate::raft::types::core::response_value::Value;
 use crate::raft::types::entry::read_operation::ReadOperation;
 use crate::raft::types::entry::request::Operation;
 use std::collections::HashMap;
 use std::fmt;
 use tracing::warn;
-use crate::protocol::zset::zrem::ZRemCommand;
 
 pub trait RaftCommand: Send + Sync {
     fn raft_request(&self, items: &[Value]) -> Result<Operation, ProtocolError>;
@@ -159,6 +160,7 @@ impl RaftCommandFactory {
         factory.register("DECR", DecrCommand);
         factory.register("GETSET", GetSetCommand);
         factory.register("ZREM", ZRemCommand);
+        factory.register("LTRIM", LTrimCommand);
         factory
     }
 
