@@ -211,6 +211,8 @@ impl MyCache {
     }
 
     pub fn flush_db(&self, req: FlushDBReq, update: &mut Update) -> Value {
+        //多key更新操作，为了保证原子加锁
+        let _lock = self.read_lock.write();
         let cache = match self.get_cache(update.db_number) {
             Err(err) => return err,
             Ok(cache) => &cache.mocha,
@@ -218,7 +220,7 @@ impl MyCache {
         //是否删除了元素
         match update.update_type {
             UpdateType::None => {
-                cache.clear();
+                    cache.clear();
             }
             UpdateType::Snapshot(queue) => {
                 queue.push(AtomicRequest {

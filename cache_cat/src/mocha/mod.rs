@@ -657,12 +657,8 @@ where
         writer.seek(SeekFrom::Start(end_pos)).await?;
         Ok(entry_count)
     }
-    pub fn clear(&self) -> usize {
+    pub fn clear(&self) {
         let mg = self.map.pin();
-        let count = mg.len();
-
         mg.clear();
-
-        count
     }
 }

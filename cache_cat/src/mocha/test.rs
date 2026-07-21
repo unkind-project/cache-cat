@@ -311,7 +311,6 @@ mod tests {
         assert!(mocha.contains_key(&"key1".to_string()));
 
         let cleared = mocha.clear();
-        assert_eq!(cleared, 2);
 
         assert!(!mocha.contains_key(&"key1".to_string()));
         assert!(!mocha.contains_key(&"key2".to_string()));
