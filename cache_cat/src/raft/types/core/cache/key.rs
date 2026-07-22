@@ -1,6 +1,7 @@
 use crate::mocha::{EntrySnapshot, ExpirePolicy, MochaOperation};
 use crate::protocol::key::del::{DelParams, DelReq};
 use crate::protocol::key::expire::ExpireReq;
+use crate::protocol::key::flushall::FlushAllReq;
 use crate::protocol::key::flushdb::FlushDBReq;
 use crate::protocol::key::persist::PersistReq;
 use crate::protocol::key::pexpire::PExpireReq;
@@ -211,16 +212,14 @@ impl MyCache {
     }
 
     pub fn flush_db(&self, req: FlushDBReq, update: &mut Update) -> Value {
-        //多key更新操作，为了保证原子加锁
         let _lock = self.read_lock.write();
         let cache = match self.get_cache(update.db_number) {
             Err(err) => return err,
             Ok(cache) => &cache.mocha,
         };
-        //是否删除了元素
         match update.update_type {
             UpdateType::None => {
-                    cache.clear();
+                cache.clear();
             }
             UpdateType::Snapshot(queue) => {
                 queue.push(AtomicRequest {
@@ -228,9 +227,37 @@ impl MyCache {
                     request: BaseOperation::FlushDB(req.clone()),
                     write_clock: update.write_clock,
                 });
+                cache.clear();
             }
             UpdateType::CAS(_) => {
                 cache.clear();
+            }
+        }
+        Value::ok()
+    }
+
+    pub fn flush_all(&self, req: FlushAllReq, update: &mut Update) -> Value {
+        let _lock = self.read_lock.write();
+        match update.update_type {
+            UpdateType::None => {
+                for database in &self.databases {
+                    database.mocha.clear();
+                }
+            }
+            UpdateType::Snapshot(queue) => {
+                queue.push(AtomicRequest {
+                    version: 1,
+                    request: BaseOperation::FlushAll(req.clone()),
+                    write_clock: update.write_clock,
+                });
+                for database in &self.databases {
+                    database.mocha.clear();
+                }
+            }
+            UpdateType::CAS(_) => {
+                for database in &self.databases {
+                    database.mocha.clear();
+                }
             }
         }
         Value::ok()

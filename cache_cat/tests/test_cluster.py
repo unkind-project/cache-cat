@@ -156,3 +156,6 @@ print(r.lrange("list test3", 0, -1))
 
 r.flushdb()
 print(r.get("test24"))
+r.set("test24", "test24")
+r.flushall()
+print(r.get("test24"))

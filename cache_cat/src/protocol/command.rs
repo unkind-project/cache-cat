@@ -23,6 +23,7 @@ use crate::protocol::hash::hvals::HValsCommand;
 use crate::protocol::key::del::DelCommand;
 use crate::protocol::key::exists::ExistsCommand;
 use crate::protocol::key::expire::ExpireCommand;
+use crate::protocol::key::flushall::FlushAllCommand;
 use crate::protocol::key::flushdb::FlushDBCommand;
 use crate::protocol::key::persist::PersistCommand;
 use crate::protocol::key::pexpire::PExpireCommand;
@@ -284,6 +285,7 @@ impl CommandFactory {
         factory.register("DECR", DecrCommand);
         factory.register("GETSET", GetSetCommand);
         factory.register("FLUSHDB", FlushDBCommand);
+        factory.register("FLUSHALL", FlushAllCommand);
         // List commands
         factory.register("LPUSH", LPushCommand);
         factory.register("RPUSH", RPushCommand);

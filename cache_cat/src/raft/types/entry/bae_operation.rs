@@ -30,6 +30,7 @@ use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
+use crate::protocol::key::flushall::FlushAllReq;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BaseOperation {
@@ -42,6 +43,7 @@ pub enum BaseOperation {
     Persist(PersistReq),
     Insert(InsertReq),
     FlushDB(FlushDBReq),
+    FlushAll(FlushAllReq),
     //string
     Set(SetReq),
     Incr(IncrReq),
